@@ -9,47 +9,54 @@ NAME		:= ft_ping
 SRC_DIR		:=	src
 OBJ_DIR		:=	obj
 
-LIB_DIR		:=	lib
-INPUT_DIR	:=	input
-DEBUG_DIR	:=	debug
 UTILS_DIR	:=	utils
 
 # ------------------------------ SUBDIRECTORIES ------------------------------ #
-SUBDIRS		:=	$(LIB_DIR) \
-				$(INPUT_DIR) \
-				$(UTILS_DIR) \
-				$(DEBUG_DIR)
+SUBDIRS		:=	$(UTILS_DIR)
 
 OBJ_SUBDIRS	:=	$(addprefix $(OBJ_DIR)/,$(SUBDIRS))
 INC_SUBDIRS	:=	$(addprefix $(SRC_DIR)/,$(SUBDIRS))
 
 # ---------------------------------- SOURCES --------------------------------- #
 SRC_FILES	:=	main.c \
-				$(UTILS_DIR)/ft_string.c
+				$(UTILS_DIR)/log.c \
+				$(UTILS_DIR)/wrapper.c
 
 SRC			:=	$(addprefix $(SRC_DIR)/,$(SRC_FILES))
 OBJ			:=	$(addprefix $(OBJ_DIR)/,$(SRC_FILES:.c=.o))
 DEP			:=	$(addprefix $(OBJ_DIR)/,$(SRC_FILES:.c=.d))
 
-# --------------------------------- COMPILER --------------------------------- #
+# -------------------------------- COMPILATION ------------------------------- #
+## Compiler
 CXX			:=	gcc
 
+## Flags
 MACROS		:=
 DEFINES		:=	$(addprefix -D,$(MACROS))
 
 INCLUDES	:=	$(addprefix -I./,$(INC_SUBDIRS))
 
-CFLAGS		:= 	-Wall \
+CFLAGS		:=	-MMD \
+				-MP
+
+ifdef error
+CFLAGS		+=	-Wall \
 				-Wextra \
-				-Werror \
-				-MMD \
-				-MP \
-				-O3 \
-				$(INCLUDES) \
+				-Werror
+endif
+
+ifdef optimize
+CFLAGS		+=	-O3
+endif
+
+ifdef debug
+CFLAGS		+=	-g
+endif
+
+CFLAGS		+=	$(INCLUDES) \
 				$(DEFINES)
 
-LDFLAGS		:=	-lpthread \
-				# -lpcap
+LDFLAGS		:=
 
 # ----------------------------------- MISC ----------------------------------- #
 RM			:=	rm -rf
@@ -60,6 +67,9 @@ RM			:=	rm -rf
 
 .PHONY: all
 all: $(NAME)
+
+test:
+	echo $(CFLAGS)
 
 -include $(DEP)
 
