@@ -1,8 +1,10 @@
 #ifndef LOG_H
 # define LOG_H
 
+#include "typedefs.h"
+
 void        log_info(const char* message, ...);
-void        log_error(const char* function_name, const char* message);
-void        log_debug(const char* function_name, const char* message);
+void        log_debug(const char* function_name, const char* message, ...);
+void        log_error(const char* message, ...);
 
 #endif // LOG_H

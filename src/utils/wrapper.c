@@ -1,8 +1,13 @@
 #include "wrapper.h"
-#include "log.h"
 
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
+
+static
+void _error(const char* function_name, const char* message) {
+    fprintf(stderr, "[Error: `%s'] %s\n", function_name, message);
+}
 
 /* ========================================================================== */
 /*                                 ALLOCATION                                 */
@@ -11,7 +16,7 @@
 void* Malloc(const u32 size) {
     void* data = malloc(size);
     if (data == NULL) {
-        log_error("Malloc", "failed to allocate memory");
+        _error("Malloc", "failed to allocate memory");
         return NULL;
     }
     return data;
@@ -19,7 +24,7 @@ void* Malloc(const u32 size) {
 
 FT_RESULT Free(void* data) {
     if (data == NULL) {
-        log_error("Free", "data is NULL");
+        _error("Free", "data is NULL");
         return FT_FAILURE;
     }
     free(data);
@@ -32,7 +37,7 @@ FT_RESULT Free(void* data) {
 
 u32 Strlen(const char* data) {
     if (data == NULL) {
-        log_error("Strlen", "data is NULL");
+        _error("Strlen", "data is NULL");
         return 0;
     }
     return (u32)strlen(data);
@@ -40,12 +45,12 @@ u32 Strlen(const char* data) {
 
 char* Strdup(const char* data) {
     if (data == NULL) {
-        log_error("Strdup", "data is NULL");
+        _error("Strdup", "data is NULL");
         return NULL;
     }
     char* str = strdup(data);
     if (str == NULL) {
-        log_error("Strdup", "failed to duplicate string");
+        _error("Strdup", "failed to duplicate string");
         return NULL;
     }
     return str;

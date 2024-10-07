@@ -10,9 +10,11 @@ SRC_DIR		:=	src
 OBJ_DIR		:=	obj
 
 UTILS_DIR	:=	utils
+INPUT_DIR	:=	input
 
 # ------------------------------ SUBDIRECTORIES ------------------------------ #
-SUBDIRS		:=	$(UTILS_DIR)
+SUBDIRS		:=	$(UTILS_DIR) \
+				$(INPUT_DIR)
 
 OBJ_SUBDIRS	:=	$(addprefix $(OBJ_DIR)/,$(SUBDIRS))
 INC_SUBDIRS	:=	$(addprefix $(SRC_DIR)/,$(SUBDIRS))
@@ -20,7 +22,8 @@ INC_SUBDIRS	:=	$(addprefix $(SRC_DIR)/,$(SUBDIRS))
 # ---------------------------------- SOURCES --------------------------------- #
 SRC_FILES	:=	main.c \
 				$(UTILS_DIR)/log.c \
-				$(UTILS_DIR)/wrapper.c
+				$(UTILS_DIR)/wrapper.c \
+				$(INPUT_DIR)/options.c
 
 SRC			:=	$(addprefix $(SRC_DIR)/,$(SRC_FILES))
 OBJ			:=	$(addprefix $(OBJ_DIR)/,$(SRC_FILES:.c=.o))
@@ -32,7 +35,6 @@ CXX			:=	gcc
 
 ## Flags
 MACROS		:=
-DEFINES		:=	$(addprefix -D,$(MACROS))
 
 INCLUDES	:=	$(addprefix -I./,$(INC_SUBDIRS))
 
@@ -49,9 +51,15 @@ ifdef optimize
 CFLAGS		+=	-O3
 endif
 
+debug = 1
+
 ifdef debug
 CFLAGS		+=	-g
+MACROS		+=	__DEBUG
+IS_DEBUG	:= " (debug mode)"
 endif
+
+DEFINES		:=	$(addprefix -D,$(MACROS))
 
 CFLAGS		+=	$(INCLUDES) \
 				$(DEFINES)
@@ -68,9 +76,6 @@ RM			:=	rm -rf
 .PHONY: all
 all: $(NAME)
 
-test:
-	echo $(CFLAGS)
-
 -include $(DEP)
 
 # Compile binary
@@ -81,7 +86,7 @@ $(NAME):   $(OBJ)
 # Compile obj files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(OBJ_DIR) $(OBJ_SUBDIRS)
-	@echo "Compiling file $<..."
+	@echo "Compiling file $<"$(IS_DEBUG)"..."
 	@$(CXX) $(CFLAGS) -c $< -o $@
 
 .PHONY: clean
