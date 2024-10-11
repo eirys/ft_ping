@@ -66,8 +66,6 @@ FT_RESULT _set_flag(char** flag) {
     return FT_SUCCESS;
 }
 
-/* -------------------------------------------------------------------------- */
-
 static
 FT_RESULT _retrieve_options(const i32 arg_count, char* const* arg_values) {
     memset(&g_arguments, 0, sizeof(Arguments));
@@ -81,13 +79,10 @@ FT_RESULT _retrieve_options(const i32 arg_count, char* const* arg_values) {
         { option_names[OPTION_HELP],    no_argument,        &options->m_help,   1 },
         { 0, 0, 0, 0 }
     };
-
     const char* short_options = "abc:";
 
-    i32 option_index = 0;
-
     while (true) {
-        i32 option_result = getopt_long(arg_count, arg_values, short_options, option_descriptors, &option_index);
+        i32 option_result = getopt_long(arg_count, arg_values, short_options, option_descriptors, NULL);
 
         switch (option_result) {
             // No option argument
@@ -107,7 +102,9 @@ FT_RESULT _retrieve_options(const i32 arg_count, char* const* arg_values) {
     return FT_SUCCESS;
 }
 
-FT_RESULT retrieve_options(const i32 arg_count, char* const* arg_values) {
+/* -------------------------------------------------------------------------- */
+
+FT_RESULT retrieve_arguments(const i32 arg_count, char* const* arg_values) {
     if (_retrieve_options(arg_count, arg_values) == FT_FAILURE) {
         return FT_FAILURE;
     }

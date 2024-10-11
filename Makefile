@@ -23,7 +23,8 @@ INC_SUBDIRS	:=	$(addprefix $(SRC_DIR)/,$(SUBDIRS))
 SRC_FILES	:=	main.c \
 				$(UTILS_DIR)/log.c \
 				$(UTILS_DIR)/wrapper.c \
-				$(INPUT_DIR)/options.c
+				$(INPUT_DIR)/options.c \
+				$(INPUT_DIR)/network.c
 
 SRC			:=	$(addprefix $(SRC_DIR)/,$(SRC_FILES))
 OBJ			:=	$(addprefix $(OBJ_DIR)/,$(SRC_FILES:.c=.o))
@@ -39,7 +40,8 @@ MACROS		:=
 INCLUDES	:=	$(addprefix -I./,$(INC_SUBDIRS))
 
 CFLAGS		:=	-MMD \
-				-MP
+				-MP \
+				-std=gnu17
 
 ifdef error
 CFLAGS		+=	-Wall \

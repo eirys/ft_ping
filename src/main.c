@@ -3,6 +3,8 @@
 #include "options.h"
 #include "log.h"
 
+/* -------------------------------------------------------------------------- */
+
 #ifdef __DEBUG
 static
 void _debug_option() {
@@ -16,10 +18,22 @@ void _debug_option() {
 # define _debug_option() (void)0
 #endif
 
-int main(const int arg_count, char* const* arg_value) {
-    if (retrieve_options(arg_count, arg_value) == FT_FAILURE) {
+static
+void _show_help(const char* program_name) {
+    log_info("\nUsage:");
+    log_info("  %s [-SHORT_OPTION] <destination>", program_name);
+    log_info("  %s [--LONG_OPTION]", program_name);
+}
+
+/* -------------------------------------------------------------------------- */
+
+int main(i32 arg_count, char* const* arg_value) {
+    if (retrieve_arguments(arg_count, arg_value) == FT_FAILURE) {
+        _show_help(arg_value[0]);
         return EXIT_FAILURE;
     }
+
+
 
     if (arg_count == 1) {
         log_error("No arguments provided");
@@ -27,9 +41,7 @@ int main(const int arg_count, char* const* arg_value) {
     }
 
     if (g_arguments.m_options.m_help) {
-        log_info("\nUsage:");
-        log_info("  %s [-SHORT_OPTION] <destination>", arg_value[0]);
-        log_info("  %s [--LONG_OPTION]", arg_value[0]);
+        _show_help(arg_value[0]);
         return EXIT_SUCCESS;
     }
 
