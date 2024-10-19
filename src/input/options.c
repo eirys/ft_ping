@@ -32,6 +32,7 @@ enum e_OptionIndex {
     OPT_INDEX_V,
     OPT_INDEX_P,
     OPT_INDEX_HELP,
+    OPT_INDEX_HELP_QM,
 
     OPTION_COUNT
 };
@@ -40,17 +41,9 @@ enum e_ShortOptionFlag {
     FLAG_TTL = 't',
     FLAG_V = 'v',
     FLAG_P = 'p',
+    FLAG_HELP_QM = '?',
 
-    FLAG_UNKNOWN = '?',
     FLAG_END = -1,
-};
-
-static
-const char* option_names[OPTION_COUNT] = {
-    "t",
-    "v",
-    "p",
-    "help",
 };
 
 /* ---------------------------------- TOOLS --------------------------------- */
@@ -156,30 +149,31 @@ FT_RESULT _retrieve_options(const int arg_count, char* const* arg_values) {
 
     struct option option_descriptors[OPTION_COUNT + 1] = {
         /* Short options */
-        { option_names[OPT_INDEX_T],        required_argument,  0,                  FLAG_TTL },
-        { option_names[OPT_INDEX_V],        no_argument,        0,                  FLAG_V },
-        { option_names[OPT_INDEX_P],        required_argument,  0,                  FLAG_P },
+        { "?",      no_argument,        0,                  FLAG_HELP_QM },
+        { "t",      required_argument,  0,                  FLAG_TTL },
+        { "v",      no_argument,        0,                  FLAG_V },
+        { "p",      required_argument,  0,                  FLAG_P },
         /* Long options */
-        { option_names[OPT_INDEX_HELP],     no_argument,        &options->m_help,   1 },
+        { "help",   no_argument,        &options->m_help,   1 },
         { 0, 0, 0, 0 }
     };
 
-    const char* short_options = "t:vp:";
+    const char* short_options = "?t:vp:";
 
     while (true) {
         option = getopt_long(arg_count, arg_values, short_options, option_descriptors, NULL);
 
         switch (option) {
-            /* No option argument */
+            /* No argument */
             case FLAG_V:            _enable_flag(&options->m_verbose); break;
+            case FLAG_HELP_QM:      if (optopt == 0) { _enable_flag(&options->m_help); break; } else { return FT_FAILURE; }
 
-            /* Option argument */
+            /* With argument */
             case FLAG_TTL:          if (_set_flag((void*)&options->m_ttl, _ttl_check) == FT_FAILURE) { return FT_FAILURE; } break;
             case FLAG_P:            if (_set_flag((void*)&options->m_pattern, _hex_check) == FT_FAILURE) { return FT_FAILURE; } break;
 
-            case FLAG_UNKNOWN:      return FT_FAILURE;
-            case FLAG_END:
-            default:                return FT_SUCCESS;
+            case FLAG_END:          return FT_SUCCESS;
+            default:                return FT_FAILURE;
         }
 
 

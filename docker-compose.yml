@@ -1,0 +1,9 @@
+services:
+  debian:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: debian:42
+    container_name: debian42
+    ports:
+      - "443:443"

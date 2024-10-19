@@ -75,6 +75,8 @@ LDFLAGS		:=
 # ----------------------------------- MISC ----------------------------------- #
 RM			:=	rm -rf
 
+COMPOSE		:=	docker compose
+
 # ============================================================================ #
 #                                     RULES                                    #
 # ============================================================================ #
@@ -107,3 +109,24 @@ fclean: clean
 
 .PHONY: re
 re: fclean all
+
+# ---------------------------------- DOCKER ---------------------------------- #
+
+.PHONY: up
+up:
+	$(COMPOSE) up -d
+
+.PHONY: down
+down:
+	$(COMPOSE) down
+
+.PHONY: clear
+clear:
+	docker image rm debian:42 -f
+
+.PHONY: dre
+dre: down clear up
+
+.PHONY: exec
+exec:
+	docker exec -ti debian42 bash

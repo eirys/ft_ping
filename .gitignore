@@ -3,5 +3,7 @@
 !.gitignore
 !Makefile
 !README.md
+!Dockerfile
+!docker-compose.yml
 
 !src
