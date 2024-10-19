@@ -1,12 +1,21 @@
 #include "wrapper.h"
 
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
+#include <string.h> /* strdup */
+#include <stdlib.h> /* malloc, free */
+#include <unistd.h> /* close */
+#include <sys/socket.h> /* socket */
+#include <stdio.h> /* fprintf */
+
+#ifdef __DEBUG
+# include <errno.h>
+#endif
 
 static
 void _error(const char* function_name, const char* message) {
     fprintf(stderr, "[Error: `%s'] %s\n", function_name, message);
+#ifdef __DEBUG
+    fprintf(stderr, "(code %d: %s)\n", errno, strerror(errno));
+#endif
 }
 
 /* -------------------------------------------------------------------------- */
@@ -35,14 +44,6 @@ FT_RESULT Free(void* data) {
 /*                                   STRING                                   */
 /* -------------------------------------------------------------------------- */
 
-u32 Strlen(const char* data) {
-    if (data == NULL) {
-        _error("Strlen", "data is NULL");
-        return 0;
-    }
-    return (u32)strlen(data);
-}
-
 char* Strdup(const char* data) {
     if (data == NULL) {
         _error("Strdup", "data is NULL");
@@ -54,4 +55,23 @@ char* Strdup(const char* data) {
         return NULL;
     }
     return str;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                   SOCKET                                   */
+/* -------------------------------------------------------------------------- */
+
+int Socket(int domain, int type, int protocol) {
+    int fd = socket(domain, type, protocol);
+    if (fd == -1)
+        _error("Socket", "failed to create socket");
+    return fd;
+}
+
+FT_RESULT Close(int fd) {
+    if (close(fd) == -1) {
+        _error("Close", "failed to close socket");
+        return FT_FAILURE;
+    }
+    return FT_SUCCESS;
 }

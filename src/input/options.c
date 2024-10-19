@@ -1,28 +1,45 @@
 #include <string.h>
 #include <getopt.h>
+#include <ctype.h>
+#include <stdlib.h>
 
 #include "options.h"
 #include "log.h"
+#include "wrapper.h"
 
-/* -------------------------------------------------------------------------- */
+/* --------------------------------- GLOBALS -------------------------------- */
 
 Arguments g_arguments;
 
 /* -------------------------------------------------------------------------- */
 
-enum e_Option {
-    OPTION_A = 0U,
-    OPTION_B,
-    OPTION_C,
-    OPTION_HELP,
+/**
+ * getopt_long() global values
+ *
+ * @param optind    : (int, set to 1) Index of next element in processing queue for getopt.
+ * @param optarg    : (char*) In case of option with argument, contains argument string value.
+ *
+ * @param opterr    : (int, set to 1) Enables automatic error message. Set to 0 to disable.
+ * @param optopt    : (int) In case of error, contains errorneous character option.
+ */
+
+static int option; /* Current option being processed */
+
+/* -------------------------------------------------------------------------- */
+
+enum e_OptionIndex {
+    OPT_INDEX_T = 0U,
+    OPT_INDEX_V,
+    OPT_INDEX_P,
+    OPT_INDEX_HELP,
 
     OPTION_COUNT
 };
 
 enum e_ShortOptionFlag {
-    FLAG_A = 'a',
-    FLAG_B = 'b',
-    FLAG_C = 'c',
+    FLAG_TTL = 't',
+    FLAG_V = 'v',
+    FLAG_P = 'p',
 
     FLAG_UNKNOWN = '?',
     FLAG_END = -1,
@@ -30,13 +47,13 @@ enum e_ShortOptionFlag {
 
 static
 const char* option_names[OPTION_COUNT] = {
-    "a",
-    "b",
-    "c",
+    "t",
+    "v",
+    "p",
     "help",
 };
 
-/* --------------------------------- STATIC --------------------------------- */
+/* ---------------------------------- TOOLS --------------------------------- */
 
 static
 void _enable_flag(i32* flag) {
@@ -49,54 +66,72 @@ void _enable_flag(i32* flag) {
 }
 
 static
-FT_RESULT _set_flag(char** flag) {
+FT_RESULT _set_flag(void* flag, FT_RESULT (*process_value)(void*, void*)) {
     if (flag == NULL) {
         log_debug("_set_flag", "improper address for flag");
         return FT_FAILURE;
-    } else if (optarg == NULL) {
-        log_error("bad value for `%s'", option_names[optind]);
+
+    } else if (optarg == NULL) { /* optarg detailed above */
+        log_error("bad value for `%c'", option);
         return FT_FAILURE;
-    } else if (*flag != NULL) {
-        log_error("flag `%s' already set", option_names[optind]);
+
+    } else if (process_value(optarg, flag) == FT_FAILURE) {
         return FT_FAILURE;
     }
 
-    *flag = optarg;
+    return FT_SUCCESS;
+}
+
+/* -------------------------------- CALLBACKS ------------------------------- */
+
+/**
+ * @brief Check if the value is a u8 number, then set flag to integer conversion.
+ */
+static
+FT_RESULT _ttl_check(void* value, void* pflag) {
+    const char* copy = value;
+
+    while (*copy != '\0') {
+        if (!isdigit(*copy)) {
+            log_error("invalid argument: `%s`", (char*)value);
+            return FT_FAILURE;
+        }
+        ++copy;
+    }
+
+    const int result = atoi(value);
+    if (result < 0 || result > UINT8_MAX) {
+        log_error("failed to set ttl flag (value is outside of [0 - 255])");
+        return FT_FAILURE;
+    }
+
+    *(u8*)pflag = (u8)result;
 
     return FT_SUCCESS;
 }
 
 static
-FT_RESULT _retrieve_options(const i32 arg_count, char* const* arg_values) {
-    memset(&g_arguments, 0, sizeof(Arguments));
+FT_RESULT _hex_check(void* value, void* pflag) {
+    const char* copy = value;
+    u32         len = 0;
 
-    Options* options = &g_arguments.m_options;
-
-    struct option option_descriptors[OPTION_COUNT + 1]= {
-        { option_names[OPTION_A],       no_argument,        0,                  FLAG_A },
-        { option_names[OPTION_B],       no_argument,        0,                  FLAG_B },
-        { option_names[OPTION_C],       required_argument,  0,                  FLAG_C },
-        { option_names[OPTION_HELP],    no_argument,        &options->m_help,   1 },
-        { 0, 0, 0, 0 }
-    };
-    const char* short_options = "abc:";
-
-    while (true) {
-        i32 option_result = getopt_long(arg_count, arg_values, short_options, option_descriptors, NULL);
-
-        switch (option_result) {
-            // No option argument
-            case FLAG_A:            _enable_flag(&options->m_flag_a); break;
-            case FLAG_B:            _enable_flag(&options->m_flag_b); break;
-
-            // Option argument
-            case FLAG_C:            if (_set_flag(&options->m_flag_c) == FT_FAILURE) { return FT_FAILURE; } break;
-
-            case FLAG_UNKNOWN:      return FT_FAILURE;
-
-            case FLAG_END:
-            default:                return FT_SUCCESS;
+    while (*copy) {
+        if (!isxdigit(*copy)) {
+            log_error("invalid argument: `%s`", (char*)value);
+            return FT_FAILURE;
         }
+        ++copy;
+        ++len;
+    }
+
+    if (len > 16) {
+        log_error("failed to set pattern flag (value too long, only up to 16 bytes allowed)");
+        return FT_FAILURE;
+    }
+
+    *(char**)pflag = Strdup(value);
+    if (*(u8**)pflag == NULL) {
+        return FT_FAILURE;
     }
 
     return FT_SUCCESS;
@@ -104,22 +139,84 @@ FT_RESULT _retrieve_options(const i32 arg_count, char* const* arg_values) {
 
 /* -------------------------------------------------------------------------- */
 
-FT_RESULT retrieve_arguments(const i32 arg_count, char* const* arg_values) {
+static inline
+void _init_options(Options* options) {
+    options->m_ttl = UINT8_MAX;
+    options->m_pattern = NULL;
+    options->m_verbose = 0;
+    options->m_help = 0;
+}
+
+static
+FT_RESULT _retrieve_options(const int arg_count, char* const* arg_values) {
+    memset(&g_arguments, 0, sizeof(Arguments));
+
+    Options* options = &g_arguments.m_options;
+    _init_options(options);
+
+    struct option option_descriptors[OPTION_COUNT + 1] = {
+        /* Short options */
+        { option_names[OPT_INDEX_T],        required_argument,  0,                  FLAG_TTL },
+        { option_names[OPT_INDEX_V],        no_argument,        0,                  FLAG_V },
+        { option_names[OPT_INDEX_P],        required_argument,  0,                  FLAG_P },
+        /* Long options */
+        { option_names[OPT_INDEX_HELP],     no_argument,        &options->m_help,   1 },
+        { 0, 0, 0, 0 }
+    };
+
+    const char* short_options = "t:vp:";
+
+    while (true) {
+        option = getopt_long(arg_count, arg_values, short_options, option_descriptors, NULL);
+
+        switch (option) {
+            /* No option argument */
+            case FLAG_V:            _enable_flag(&options->m_verbose); break;
+
+            /* Option argument */
+            case FLAG_TTL:          if (_set_flag((void*)&options->m_ttl, _ttl_check) == FT_FAILURE) { return FT_FAILURE; } break;
+            case FLAG_P:            if (_set_flag((void*)&options->m_pattern, _hex_check) == FT_FAILURE) { return FT_FAILURE; } break;
+
+            case FLAG_UNKNOWN:      return FT_FAILURE;
+            case FLAG_END:
+            default:                return FT_SUCCESS;
+        }
+
+
+    }
+
+    return FT_SUCCESS;
+}
+
+/* -------------------------------------------------------------------------- */
+
+FT_RESULT retrieve_arguments(const int arg_count, char* const* arg_values) {
     if (_retrieve_options(arg_count, arg_values) == FT_FAILURE) {
         return FT_FAILURE;
+    }
+
+    if (g_arguments.m_options.m_help == 1) {
+        return FT_SUCCESS;
     }
 
     g_arguments.m_destination = arg_values[optind];
 
     if (optind + 1 < arg_count) {
-        log_error("Too many arguments");
+        log_error("too many arguments (use flag `--help` for indications)");
         return FT_FAILURE;
     } else if (g_arguments.m_destination == NULL) {
-        log_error("No destination provided");
+        log_error("no destination provided (use flag `--help` for indications)");
         return FT_FAILURE;
     }
 
     log_info("destination: `%s'", g_arguments.m_destination);
 
     return FT_SUCCESS;
+}
+
+void destroy_options(void) {
+    Options* options = &g_arguments.m_options;
+
+    if (options->m_pattern != NULL)
+        Free(options->m_pattern);
 }

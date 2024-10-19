@@ -1,35 +1,36 @@
-#ifndef OPTIONS_H
-# define OPTIONS_H
+#ifndef SOCKET_H
+# define SOCKET_H
 
 #include "typedefs.h"
 
 /* -------------------------------------------------------------------------- */
-/*                                   STRUCTS                                  */
+/*                                   STRUCT                                   */
 /* -------------------------------------------------------------------------- */
 
-typedef struct s_Options {
-    u8      m_ttl;          /* 0 - 255 */
-    u8*     m_pattern;      /* hex content, up to 16 char */
-    i32     m_verbose;
-    i32     m_help;
-} Options;
-
-typedef struct s_Arguments {
-    Options m_options;
-    char*   m_destination;
-} Arguments;
+typedef struct RawSocket {
+    int         m_fd;           /* File descriptor */
+    i32         m_ip;           /* Binary representation of the destination IP */
+    char*       m_ip_address;   /* IP address in str form (can be the same as destination) */
+} RawSocket;
 
 /* -------------------------------------------------------------------------- */
 /*                                   GLOBALS                                  */
 /* -------------------------------------------------------------------------- */
 
-extern Arguments g_arguments;
+extern RawSocket g_socket;
 
 /* -------------------------------------------------------------------------- */
 /*                                 PROTOTYPES                                 */
 /* -------------------------------------------------------------------------- */
 
-FT_RESULT   retrieve_arguments(const int arg_count, char* const* arg_values);
-void        destroy_options(void);
+/**
+ * @brief Create and open a raw socket, with extra information.
+ */
+FT_RESULT   create_raw_socket(const char* destination);
 
-#endif /* OPTIONS_H */
+/**
+ * @brief Close the raw socket and free allocated data.
+ */
+void        close_raw_socket(void);
+
+#endif /* SOCKET_H */

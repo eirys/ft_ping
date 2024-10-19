@@ -22,4 +22,4 @@ typedef double      f64;
 # define FT_SUCCESS     true
 # define FT_FAILURE     false
 
-#endif // TYPES_H
+#endif /* TYPES_H */

@@ -11,10 +11,12 @@ OBJ_DIR		:=	obj
 
 UTILS_DIR	:=	utils
 INPUT_DIR	:=	input
+NETWORK_DIR	:=	network
 
 # ------------------------------ SUBDIRECTORIES ------------------------------ #
 SUBDIRS		:=	$(UTILS_DIR) \
-				$(INPUT_DIR)
+				$(INPUT_DIR) \
+				$(NETWORK_DIR)
 
 OBJ_SUBDIRS	:=	$(addprefix $(OBJ_DIR)/,$(SUBDIRS))
 INC_SUBDIRS	:=	$(addprefix $(SRC_DIR)/,$(SUBDIRS))
@@ -24,7 +26,9 @@ SRC_FILES	:=	main.c \
 				$(UTILS_DIR)/log.c \
 				$(UTILS_DIR)/wrapper.c \
 				$(INPUT_DIR)/options.c \
-				$(INPUT_DIR)/network.c
+				$(NETWORK_DIR)/raw_socket.c \
+				$(NETWORK_DIR)/receive_msg.c \
+				$(NETWORK_DIR)/send_request.c
 
 SRC			:=	$(addprefix $(SRC_DIR)/,$(SRC_FILES))
 OBJ			:=	$(addprefix $(OBJ_DIR)/,$(SRC_FILES:.c=.o))

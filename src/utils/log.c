@@ -7,10 +7,6 @@ void log_info(const char* message, ...) {
     va_list args;
     va_start(args, message);
 
-#ifdef __DEBUG
-    // fprintf(stdout, "[Info] ");
-#endif
-
     vfprintf(stdout, message, args);
     fprintf(stdout, "\n");
 
