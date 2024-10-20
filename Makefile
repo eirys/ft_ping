@@ -121,12 +121,12 @@ down:
 	$(COMPOSE) down
 
 .PHONY: clear
-clear:
+clear: down
 	docker image rm debian:42 -f
 
 .PHONY: dre
-dre: down clear up
+dre: clear up
 
 .PHONY: exec
-exec:
+exec: up
 	docker exec -ti debian42 bash
