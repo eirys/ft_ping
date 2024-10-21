@@ -10,5 +10,3 @@ FT_RESULT   receive_msg(void) {
 
     return FT_SUCCESS;
 }
-
-FT_RESULT echo(void) { return FT_SUCCESS; }

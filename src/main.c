@@ -3,6 +3,7 @@
 
 #include "options.h"
 #include "log.h"
+#include "raw_socket.h"
 #include "network_io.h"
 
 /* --------------------------------- GLOBALS -------------------------------- */
@@ -18,7 +19,7 @@ void _debug_option() {
     log_info("Options:");
     log_info("  -t: %d", g_arguments.m_options.m_ttl);
     log_info("  -v: %d", g_arguments.m_options.m_verbose);
-    log_info("  -p: %s", g_arguments.m_options.m_pattern);
+    log_info("  -p: %lu", g_arguments.m_options.m_pattern);
     log_info("  --help: %d", g_arguments.m_options.m_help);
 }
 
@@ -43,22 +44,45 @@ int _exit_cleanup(int exit_value) {
     return exit_value;
 }
 
+static inline
+FT_RESULT _check_privileges() {
+    if (getuid() != 0) {
+        log_error("root privileges required");
+        return FT_FAILURE;
+    }
+
+    return FT_SUCCESS;
+}
+
+static inline
+FT_RESULT _echo(void) {
+    if (create_raw_socket(g_arguments.m_destination) == FT_FAILURE) {
+        return FT_FAILURE;
+    }
+    send_request();
+    close_raw_socket();
+    return FT_SUCCESS;
+}
+
 /* -------------------------------------------------------------------------- */
 
 int main(int arg_count, char* const* arg_value) {
+    log_info("Starting...");
+    if (_check_privileges() == FT_FAILURE) {
+        return _exit_cleanup(EXIT_FAILURE);
+    }
+
     g_pid = getpid() & 0xFFff;
 
     if (retrieve_arguments(arg_count, arg_value) == FT_FAILURE) {
-        _exit_cleanup(EXIT_FAILURE);
+        return _exit_cleanup(EXIT_FAILURE);
     }
 
     if (g_arguments.m_options.m_help) {
         _show_help(arg_value[0]);
-        return _exit_cleanup(EXIT_SUCCESS);
     } else {
         _debug_option();
-
-        echo();
+        _echo();
     }
 
     return _exit_cleanup(EXIT_SUCCESS);

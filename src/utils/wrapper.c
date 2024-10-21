@@ -58,6 +58,16 @@ char* Strdup(const char* data) {
 }
 
 /* -------------------------------------------------------------------------- */
+/*                                 RAW MEMORY                                 */
+/* -------------------------------------------------------------------------- */
+
+void Memset64(void* dest, u64 value, u32 count) {
+    u64* ptr = (u64*)dest;
+    for (u32 i = 0; i < count; ++i)
+        ptr[i] = value;
+}
+
+/* -------------------------------------------------------------------------- */
 /*                                   SOCKET                                   */
 /* -------------------------------------------------------------------------- */
 
@@ -71,6 +81,14 @@ int Socket(int domain, int type, int protocol) {
 FT_RESULT Close(int fd) {
     if (close(fd) == -1) {
         _error("Close", "failed to close socket");
+        return FT_FAILURE;
+    }
+    return FT_SUCCESS;
+}
+
+FT_RESULT Sendto(int sockfd, const void* buf, u32 len, int flags, const struct sockaddr* dest_addr, socklen_t addrlen) {
+    if (sendto(sockfd, buf, len, flags, dest_addr, addrlen) == -1) {
+        _error("Send", "failed to send data");
         return FT_FAILURE;
     }
     return FT_SUCCESS;

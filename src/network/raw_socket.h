@@ -1,6 +1,7 @@
 #ifndef SOCKET_H
 # define SOCKET_H
 
+#include <netinet/in.h> /* sockaddr_in */
 #include "typedefs.h"
 
 /* -------------------------------------------------------------------------- */
@@ -8,9 +9,10 @@
 /* -------------------------------------------------------------------------- */
 
 typedef struct RawSocket {
-    int         m_fd;           /* File descriptor */
-    i32         m_ip;           /* Binary representation of the destination IP */
-    char*       m_ip_address;   /* IP address in str form (can be the same as destination) */
+    struct sockaddr_in* m_ipv4;
+    int                 m_fd;           /* File descriptor */
+    // i32                 m_ip;           /* Binary representation of the destination IP */
+    // char*               m_ip_address;   /* IP address in str form (can be the same as destination) */
 } RawSocket;
 
 /* -------------------------------------------------------------------------- */

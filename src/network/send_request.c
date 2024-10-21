@@ -5,13 +5,18 @@
 #include <string.h> /* strlen */
 
 #include "raw_socket.h"
+#include "wrapper.h"
 #include "options.h"
 
 /* -------------------------------------------------------------------------- */
 
-#define BUF_SIZE            UINT16_MAX
 #define IP_HEADER_SIZE      20  /* No options */
+
+#define ICMP_MSG_SIZE       64
 #define ICMP_HEADER_SIZE    8
+#define ICMP_DATA_SIZE      (ICMP_MSG_SIZE - ICMP_HEADER_SIZE)
+
+#define BUF_SIZE            (ICMP_MSG_SIZE + IP_HEADER_SIZE)
 
 /* -------------------------------------------------------------------------- */
 
@@ -20,12 +25,12 @@
  */
 static inline
 u16 _compute_checksum(const u16* addr, u16 data_len) {
-    const u16*  it = addr;
-    i32         bytes_to_process = data_len;
-
-    u32         accumulator = 0U;
+    i32         bytes_to_process = (i32)data_len;
 
     /* Iterate over addr, accumulates 2 bytes at a time */
+    const u16*  it = addr;
+    u32         accumulator = 0U;
+
     while (bytes_to_process > 1) {
         accumulator += *it++;
         bytes_to_process -= 2;
@@ -47,62 +52,63 @@ u16 _compute_checksum(const u16* addr, u16 data_len) {
 }
 
 static inline
-void _set_ip_header(char* buffer, u16 data_len) {
-    struct iphdr* ip_header = (struct iphdr*)buffer;
+void _set_ip_header(struct iphdr* ip_header) {
+    const u32 ihl = IP_HEADER_SIZE / sizeof(i32);
 
-    const u32 byte_count = IP_HEADER_SIZE / sizeof(i32);
+    ip_header->version  = 4U;                               /* IP version: 4 */
+    ip_header->ihl      = ihl;                              /* Size of IP header (byte count) */
+    ip_header->tos      = 0x0;                              /* Common ToS */
+    ip_header->tot_len  = htons(BUF_SIZE);                  /* Length of IP header + data */
+    ip_header->id       = htons(0U);                        /* Let the kernel set it */
+    ip_header->frag_off = htons(0U);                        /* No fragmentation offset */
+    ip_header->ttl      = g_arguments.m_options.m_ttl;      /* By default, TTL set to UCHAR_MAX. */
+    ip_header->protocol = IPPROTO_ICMP;                     /* ICMP protocol */
+    ip_header->saddr    = INADDR_ANY;                       /* Source bin ip : let the kernel set it */
+    ip_header->daddr    = g_socket.m_ipv4->sin_addr.s_addr; /* Destination bin ip */
 
-    ip_header->version  = 4;                            /* IP version: 4 */
-    ip_header->ihl      = byte_count;                   /* Size of IP header (byte count) */
-    ip_header->tos      = 0x0;                          /* Common ToS */
-    ip_header->tot_len  = htons(byte_count + data_len); /* Length of IP header + data */
-    ip_header->id       = 0;                            /* Let the kernel set it */
-    ip_header->frag_off = 0;                            /* No fragmentation offset */
-    ip_header->ttl      = g_arguments.m_options.m_ttl;  /* By default, TTL set to UCHAR_MAX. */
-    ip_header->protocol = IPPROTO_ICMP;                 /* ICMP protocol */
-    ip_header->check    = 0;                            /* Let the kernel compute it */
-    ip_header->saddr    = INADDR_ANY;                   /* Source bin ip : let the kernel set it */
-    ip_header->daddr    = g_socket.m_ip;                /* Destination bin ip */
+    ip_header->check    = _compute_checksum((u16*)ip_header, IP_HEADER_SIZE);
 }
 
 static inline
-void _set_icmp_header(char* buffer, u16 data_len) {
-    struct icmphdr* icmp_header = (struct icmphdr*)buffer;
-
+void _set_icmp_header(struct icmphdr* icmp_header) {
     static u16      sequence = 0;
 
     icmp_header->type               = ICMP_ECHO;    /* ICMP Echo request */
-    icmp_header->code               = 0;            /* No specific context */
+    icmp_header->code               = 0U;           /* No specific context */
     icmp_header->un.echo.id         = g_pid;        /* Aid in matching echo requests/replies */
     icmp_header->un.echo.sequence   = ++sequence;   /* Aid in matching echo requests/replies */
 
-    icmp_header->checksum           = _compute_checksum((u16*)icmp_header, data_len);
+    icmp_header->checksum           = _compute_checksum((u16*)icmp_header, ICMP_MSG_SIZE);
 }
 
 /* -------------------------------------------------------------------------- */
+#include <stdio.h>
+FT_RESULT   send_request() {
+    static u8       send_buffer[BUF_SIZE];
 
-// TODO lol
-FT_RESULT   send_request(const char* msg) {
-    static char send_buffer[BUF_SIZE];
+    struct iphdr*   ip_header = (struct iphdr*)send_buffer;
+    struct icmphdr* icmp_header = (struct icmphdr*)(ip_header + 1);
+    void*           message = (void*)(icmp_header + 1);
 
-    const u32 header_size = IP_HEADER_SIZE + ICMP_HEADER_SIZE;
-    const u32 message_size = BUF_SIZE - header_size;
+    _set_ip_header(ip_header);
+    _set_icmp_header(icmp_header);
 
-    u16 data_len = sizeof(u64) - ICMP_HEADER_SIZE;
+    Memset64(message, g_arguments.m_options.m_pattern, ICMP_DATA_SIZE / sizeof(u64));
 
-    /* If pattern flag is set */
-    if (msg != NULL)
-        data_len = strlen(msg);
+    //debug
+    u8 buf2[BUF_SIZE];
+    memcpy(buf2, send_buffer, BUF_SIZE);
+    // print
+    for (int i = 0; i < BUF_SIZE; i++) {
+        printf("%02x ", buf2[i]);
+    }
+    printf("\n");
 
-    _set_ip_header(send_buffer, data_len + ICMP_HEADER_SIZE);
-    _set_icmp_header(send_buffer + IP_HEADER_SIZE, data_len);
-
-    /* Fill with (random??) pattern */
-    memset(send_buffer + header_size, 0b10100101 /* ??? */, message_size);
-    if (msg != NULL)
-        memcpy(send_buffer + header_size, msg, data_len);
-
-    send(g_socket.m_fd, send_buffer, header_size + data_len, 0x0);
-
-    return FT_SUCCESS;
+    return Sendto(
+        g_socket.m_fd,
+        send_buffer,
+        BUF_SIZE,
+        0x0, /* No flags */
+        (struct sockaddr*)g_socket.m_ipv4,
+        sizeof(struct sockaddr_in));
 }

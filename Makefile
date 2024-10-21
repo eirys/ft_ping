@@ -26,6 +26,7 @@ SRC_FILES	:=	main.c \
 				$(UTILS_DIR)/log.c \
 				$(UTILS_DIR)/wrapper.c \
 				$(INPUT_DIR)/options.c \
+				$(INPUT_DIR)/callbacks.c \
 				$(NETWORK_DIR)/raw_socket.c \
 				$(NETWORK_DIR)/receive_msg.c \
 				$(NETWORK_DIR)/send_request.c
@@ -82,7 +83,12 @@ COMPOSE		:=	docker compose
 # ============================================================================ #
 
 .PHONY: all
-all: $(NAME)
+all: $(NAME) copy
+
+.PHONY: copy
+copy:
+	@mkdir -p ping_output
+	@cp $(NAME) ping_output
 
 -include $(DEP)
 
@@ -113,7 +119,7 @@ re: fclean all
 # ---------------------------------- DOCKER ---------------------------------- #
 
 .PHONY: up
-up:
+up: all
 	$(COMPOSE) up -d
 
 .PHONY: down
@@ -122,7 +128,8 @@ down:
 
 .PHONY: clear
 clear: down
-	docker image rm debian:42 -f
+	docker volume rm -f $(shell docker volume ls -q)
+	docker image rm -f $(shell docker image ls -aq)
 
 .PHONY: dre
 dre: clear up

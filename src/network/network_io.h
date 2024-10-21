@@ -17,14 +17,11 @@ extern pid_t    g_pid;
 /**
  * @brief Send an ICMP echo request to the given destination.
  */
-FT_RESULT   send_request(const char* msg);
+FT_RESULT   send_request();
 
 /**
  * @brief Receive ICMP messages
  */
 FT_RESULT   receive_msg(void);
-
-
-FT_RESULT   echo(void);
 
 #endif /* NETWORK_IO_H */

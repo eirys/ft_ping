@@ -11,8 +11,9 @@
 
 RawSocket  g_socket = {
     .m_fd = -1,
-    .m_ip = 0xFFffFFff,
-    .m_ip_address = NULL
+    .m_ipv4 = NULL,
+    // .m_ip = 0xFFffFFff,
+    // .m_ip_address = NULL
 };
 
 /* -------------------------------------------------------------------------- */
@@ -64,16 +65,19 @@ FT_RESULT create_raw_socket(const char* destination) {
     }
 
     /* Convert binary IPv4 to string */
-    struct sockaddr_in* ipv4 = (struct sockaddr_in*)_destination_info->ai_addr;
-    g_socket.m_ip = ipv4->sin_addr.s_addr;
-
-    char ip[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &ipv4->sin_addr, ip, INET_ADDRSTRLEN);
-
-    g_socket.m_ip_address = Strdup(ip);
-    if (g_socket.m_ip_address == NULL) {
+    g_socket.m_ipv4 = Malloc(sizeof(struct sockaddr_in));
+    if (g_socket.m_ipv4 == NULL) {
         return _destroy_malformed_data();
     }
+    *g_socket.m_ipv4 = *(struct sockaddr_in*)_destination_info->ai_addr;
+
+    // char ip[INET_ADDRSTRLEN];
+    // inet_ntop(AF_INET, &ipv4->sin_addr, ip, INET_ADDRSTRLEN);
+
+    // g_socket.m_ip_address = Strdup(ip);
+    // if (g_socket.m_ip_address == NULL) {
+    //     return _destroy_malformed_data();
+    // }
 
     /* IP Header: Tell the kernel that we build and include our own IP header */
     const i32 option_value = 1;
@@ -89,8 +93,7 @@ void close_raw_socket(void) {
     if (g_socket.m_fd != -1) {
         Close(g_socket.m_fd);
     }
-
-    if (g_socket.m_ip_address != NULL) {
-        Free(g_socket.m_ip_address);
+    if (g_socket.m_ipv4 != NULL) {
+        Free(g_socket.m_ipv4);
     }
 }

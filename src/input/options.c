@@ -1,15 +1,23 @@
 #include <string.h>
 #include <getopt.h>
-#include <ctype.h>
-#include <stdlib.h>
 
 #include "options.h"
+#include "callbacks.h"
 #include "log.h"
 #include "wrapper.h"
 
+#define RANDOM_PATTERN      0xDEADBEEF
+
 /* --------------------------------- GLOBALS -------------------------------- */
 
-Arguments g_arguments;
+Arguments g_arguments = {
+    .m_options.m_ttl = UINT8_MAX,
+    .m_options.m_pattern = RANDOM_PATTERN,
+    .m_options.m_verbose = false,
+    .m_options.m_help = false,
+
+    .m_destination = NULL
+};
 
 /* -------------------------------------------------------------------------- */
 
@@ -49,13 +57,13 @@ enum e_ShortOptionFlag {
 /* ---------------------------------- TOOLS --------------------------------- */
 
 static
-void _enable_flag(i32* flag) {
+void _enable_flag(bool* flag) {
     if (flag == NULL) {
         log_debug("_enable_flag", "flag is NULL");
         return;
     }
 
-    *flag = 1;
+    *flag = true;
 }
 
 static
@@ -75,69 +83,10 @@ FT_RESULT _set_flag(void* flag, FT_RESULT (*process_value)(void*, void*)) {
     return FT_SUCCESS;
 }
 
-/* -------------------------------- CALLBACKS ------------------------------- */
-
-/**
- * @brief Check if the value is a u8 number, then set flag to integer conversion.
- */
-static
-FT_RESULT _ttl_check(void* value, void* pflag) {
-    const char* copy = value;
-
-    while (*copy != '\0') {
-        if (!isdigit(*copy)) {
-            log_error("invalid argument: `%s`", (char*)value);
-            return FT_FAILURE;
-        }
-        ++copy;
-    }
-
-    const int result = atoi(value);
-    if (result < 0 || result > UINT8_MAX) {
-        log_error("failed to set ttl flag (value is outside of [0 - 255])");
-        return FT_FAILURE;
-    }
-
-    *(u8*)pflag = (u8)result;
-
-    return FT_SUCCESS;
-}
-
-static
-FT_RESULT _hex_check(void* value, void* pflag) {
-    const char* copy = value;
-    u32         len = 0;
-
-    while (*copy) {
-        if (!isxdigit(*copy)) {
-            log_error("invalid argument: `%s`", (char*)value);
-            return FT_FAILURE;
-        }
-        ++copy;
-        ++len;
-    }
-
-    if (len > 16) {
-        log_error("failed to set pattern flag (value too long, only up to 16 bytes allowed)");
-        return FT_FAILURE;
-    }
-
-    *(char**)pflag = Strdup(value);
-    if (*(u8**)pflag == NULL) {
-        return FT_FAILURE;
-    }
-
-    return FT_SUCCESS;
-}
-
 /* -------------------------------------------------------------------------- */
 
 static inline
 void _init_options(Options* options) {
-    options->m_ttl = UINT8_MAX;
-    options->m_pattern = NULL;
-    options->m_verbose = 0;
-    options->m_help = 0;
 }
 
 static
@@ -149,12 +98,12 @@ FT_RESULT _retrieve_options(const int arg_count, char* const* arg_values) {
 
     struct option option_descriptors[OPTION_COUNT + 1] = {
         /* Short options */
-        { "?",      no_argument,        0,                  FLAG_HELP_QM },
-        { "t",      required_argument,  0,                  FLAG_TTL },
-        { "v",      no_argument,        0,                  FLAG_V },
-        { "p",      required_argument,  0,                  FLAG_P },
+        { "?",      no_argument,        NULL,                   FLAG_HELP_QM },
+        { "t",      required_argument,  NULL,                   FLAG_TTL },
+        { "v",      no_argument,        NULL,                   FLAG_V },
+        { "p",      required_argument,  NULL,                   FLAG_P },
         /* Long options */
-        { "help",   no_argument,        &options->m_help,   1 },
+        { "help",   no_argument,        (int*)&options->m_help, (int)true },
         { 0, 0, 0, 0 }
     };
 
@@ -169,14 +118,12 @@ FT_RESULT _retrieve_options(const int arg_count, char* const* arg_values) {
             case FLAG_HELP_QM:      if (optopt == 0) { _enable_flag(&options->m_help); break; } else { return FT_FAILURE; }
 
             /* With argument */
-            case FLAG_TTL:          if (_set_flag((void*)&options->m_ttl, _ttl_check) == FT_FAILURE) { return FT_FAILURE; } break;
-            case FLAG_P:            if (_set_flag((void*)&options->m_pattern, _hex_check) == FT_FAILURE) { return FT_FAILURE; } break;
+            case FLAG_TTL:          if (_set_flag((void*)&options->m_ttl, ttl_check) == FT_FAILURE) { return FT_FAILURE; } break;
+            case FLAG_P:            if (_set_flag((void*)&options->m_pattern, hex_check) == FT_FAILURE) { return FT_FAILURE; } break;
 
             case FLAG_END:          return FT_SUCCESS;
             default:                return FT_FAILURE;
         }
-
-
     }
 
     return FT_SUCCESS;
@@ -211,6 +158,4 @@ FT_RESULT retrieve_arguments(const int arg_count, char* const* arg_values) {
 void destroy_options(void) {
     Options* options = &g_arguments.m_options;
 
-    if (options->m_pattern != NULL)
-        Free(options->m_pattern);
 }

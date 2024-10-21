@@ -8,10 +8,10 @@
 /* -------------------------------------------------------------------------- */
 
 typedef struct s_Options {
+    u64     m_pattern;      /* hex content */
     u8      m_ttl;          /* 0 - 255 */
-    u8*     m_pattern;      /* hex content, up to 16 char */
-    i32     m_verbose;
-    i32     m_help;
+    bool    m_verbose;
+    bool    m_help;
 } Options;
 
 typedef struct s_Arguments {
