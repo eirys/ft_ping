@@ -6,16 +6,19 @@
 #include "log.h"
 #include "wrapper.h"
 
-#define RANDOM_PATTERN      0xDEADBEEF
+#define RANDOM_PATTERN      0xDEadBEef
+#define RANDOM_PATTERN_LEN  4
 
 /* --------------------------------- GLOBALS -------------------------------- */
 
 Arguments g_arguments = {
     .m_options.m_ttl = UINT8_MAX,
-    .m_options.m_pattern = RANDOM_PATTERN,
+    .m_options.m_linger = INT32_MAX,
+    .m_options.m_pattern.content = RANDOM_PATTERN,
+    .m_options.m_pattern.length = RANDOM_PATTERN_LEN,
     .m_options.m_verbose = false,
     .m_options.m_help = false,
-
+    .m_options.m_numeric = false,
     .m_destination = NULL
 };
 
@@ -35,23 +38,43 @@ static int option; /* Current option being processed */
 
 /* -------------------------------------------------------------------------- */
 
+/**
+ * @brief Total options
+ */
 enum e_OptionIndex {
-    OPT_INDEX_T = 0U,
-    OPT_INDEX_V,
+    OPT_INDEX_V = 0U,
     OPT_INDEX_P,
     OPT_INDEX_HELP,
     OPT_INDEX_HELP_QM,
+    OPT_INDEX_N,
+    OPT_INDEX_W_LINGER,
+    OPT_INDEX_TTL,
 
     OPTION_COUNT
 };
 
+/**
+ * @brief Short options (single character) value
+ */
 enum e_ShortOptionFlag {
-    FLAG_TTL = 't',
     FLAG_V = 'v',
     FLAG_P = 'p',
     FLAG_HELP_QM = '?',
+    FLAG_N = 'n',
+    FLAG_W_LINGER = 'W',
 
+    FLAG_LONG = 0,
     FLAG_END = -1,
+};
+
+/**
+ * @brief Long options (multi-character)
+ */
+enum e_LongOptionIndex {
+    LONG_OPT_INDEX_HELP = 0U,
+    LONG_OPT_INDEX_TTL,
+
+    LONG_OPTION_COUNT
 };
 
 /* ---------------------------------- TOOLS --------------------------------- */
@@ -85,43 +108,49 @@ FT_RESULT _set_flag(void* flag, FT_RESULT (*process_value)(void*, void*)) {
 
 /* -------------------------------------------------------------------------- */
 
-static inline
-void _init_options(Options* options) {
-}
-
 static
 FT_RESULT _retrieve_options(const int arg_count, char* const* arg_values) {
-    memset(&g_arguments, 0, sizeof(Arguments));
-
     Options* options = &g_arguments.m_options;
-    _init_options(options);
+
+    int long_option[LONG_OPTION_COUNT] = {
+        [LONG_OPT_INDEX_TTL] = false,
+        [LONG_OPT_INDEX_HELP] = false
+    };
 
     struct option option_descriptors[OPTION_COUNT + 1] = {
         /* Short options */
-        { "?",      no_argument,        NULL,                   FLAG_HELP_QM },
-        { "t",      required_argument,  NULL,                   FLAG_TTL },
-        { "v",      no_argument,        NULL,                   FLAG_V },
-        { "p",      required_argument,  NULL,                   FLAG_P },
+        { "?",      no_argument,        NULL,                               FLAG_HELP_QM },
+        { "v",      no_argument,        NULL,                               FLAG_V },
+        { "p",      required_argument,  NULL,                               FLAG_P },
+        { "n",      no_argument,        NULL,                               FLAG_N },
+        { "W",      required_argument,  NULL,                               FLAG_W_LINGER },
         /* Long options */
-        { "help",   no_argument,        (int*)&options->m_help, (int)true },
+        { "help",   no_argument,        &long_option[LONG_OPT_INDEX_HELP],  1 },
+        { "ttl",    required_argument,  &long_option[LONG_OPT_INDEX_TTL],   1 },
         { 0, 0, 0, 0 }
     };
 
-    const char* short_options = "?t:vp:";
+    const char* short_options = "?vp:nW:";
 
     while (true) {
         option = getopt_long(arg_count, arg_values, short_options, option_descriptors, NULL);
 
         switch (option) {
-            /* No argument */
-            case FLAG_V:            _enable_flag(&options->m_verbose); break;
-            case FLAG_HELP_QM:      if (optopt == 0) { _enable_flag(&options->m_help); break; } else { return FT_FAILURE; }
+            /* Long options */
+            case FLAG_LONG:
+                if (long_option[LONG_OPT_INDEX_TTL]) { if (_set_flag((void*)&options->m_ttl, ttl_check) == FT_FAILURE) { return FT_FAILURE; }; long_option[LONG_OPT_INDEX_TTL] = false; }
+                if (long_option[LONG_OPT_INDEX_HELP]) { _enable_flag(&options->m_help); return FT_SUCCESS; }
+                break;
 
-            /* With argument */
-            case FLAG_TTL:          if (_set_flag((void*)&options->m_ttl, ttl_check) == FT_FAILURE) { return FT_FAILURE; } break;
+            /* Short options */
+            case FLAG_V:            _enable_flag(&options->m_verbose); break;
+            case FLAG_N:            _enable_flag(&options->m_numeric); break;
+            case FLAG_HELP_QM:      if (optopt == 0) { _enable_flag(&options->m_help); break; } else { return FT_FAILURE; }
             case FLAG_P:            if (_set_flag((void*)&options->m_pattern, hex_check) == FT_FAILURE) { return FT_FAILURE; } break;
+            case FLAG_W_LINGER:     if (_set_flag((void*)&options->m_linger, linger_check) == FT_FAILURE) { return FT_FAILURE; } break;
 
             case FLAG_END:          return FT_SUCCESS;
+
             default:                return FT_FAILURE;
         }
     }

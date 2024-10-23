@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "typedefs.h"
+#include "options.h"
 #include "log.h"
 
 /* -------------------------------- CALLBACKS ------------------------------- */
@@ -45,14 +46,12 @@ FT_RESULT hex_check(void* value, void* pflag) {
             return FT_FAILURE;
         }
         ++copy;
-        ++len;
-    }
 
-    if (len > 16) {
-        log_error("failed to set pattern flag (value too long, only up to 16 bytes allowed)");
-        return FT_FAILURE;
+        if (++len > 16) {
+            log_error("failed to set pattern flag (value too long, only up to 16 bytes allowed)");
+            return FT_FAILURE;
+        }
     }
-
     /* Process 2 bytes at a time */
     u64 result = 0;
     for (u32 i = 0; i < len; i += 2) {
@@ -62,7 +61,16 @@ FT_RESULT hex_check(void* value, void* pflag) {
         result |= strtol((const char*)byte, NULL, 16);
     }
 
-    *(u64*)pflag = result;
+
+    Pattern* pattern = (Pattern*)pflag;
+    pattern->content = result;
+    pattern->length = (len + 1) / 2;
 
     return FT_SUCCESS;
+}
+
+//TODO
+FT_RESULT linger_check(void* value, void* pflag) {
+    return 1;
+
 }

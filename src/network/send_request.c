@@ -10,12 +10,6 @@
 
 /* -------------------------------------------------------------------------- */
 
-#define IP_HEADER_SIZE      20  /* No options */
-
-#define ICMP_MSG_SIZE       64
-#define ICMP_HEADER_SIZE    8
-#define ICMP_DATA_SIZE      (ICMP_MSG_SIZE - ICMP_HEADER_SIZE)
-
 #define BUF_SIZE            (ICMP_MSG_SIZE + IP_HEADER_SIZE)
 
 /* -------------------------------------------------------------------------- */
@@ -23,7 +17,7 @@
 /**
  * @brief Implementation is from Mike Muuss (`ping` public domain version).
  */
-static inline
+static
 u16 _compute_checksum(const u16* addr, u16 data_len) {
     i32         bytes_to_process = (i32)data_len;
 
@@ -51,12 +45,16 @@ u16 _compute_checksum(const u16* addr, u16 data_len) {
     return ~(accumulator);
 }
 
-static inline
+static
 void _set_ip_header(struct iphdr* ip_header) {
-    const u32 ihl = IP_HEADER_SIZE / sizeof(i32);
+    static bool is_init = false;
+
+    if (is_init)
+        return;
+    is_init = true;
 
     ip_header->version  = 4U;                               /* IP version: 4 */
-    ip_header->ihl      = ihl;                              /* Size of IP header (byte count) */
+    ip_header->ihl      = IP_HEADER_SIZE / sizeof(i32);     /* Size of IP header (in 32-bit words) */
     ip_header->tos      = 0x0;                              /* Common ToS */
     ip_header->tot_len  = htons(BUF_SIZE);                  /* Length of IP header + data */
     ip_header->id       = htons(0U);                        /* Let the kernel set it */
@@ -69,40 +67,78 @@ void _set_ip_header(struct iphdr* ip_header) {
     ip_header->check    = _compute_checksum((u16*)ip_header, IP_HEADER_SIZE);
 }
 
-static inline
+static
 void _set_icmp_header(struct icmphdr* icmp_header) {
     static u16      sequence = 0;
 
+    /* Set it after filling payload with pattern for checksum */
     icmp_header->type               = ICMP_ECHO;    /* ICMP Echo request */
     icmp_header->code               = 0U;           /* No specific context */
     icmp_header->un.echo.id         = g_pid;        /* Aid in matching echo requests/replies */
-    icmp_header->un.echo.sequence   = ++sequence;   /* Aid in matching echo requests/replies */
+    icmp_header->un.echo.sequence   = sequence++;   /* Aid in matching echo requests/replies */
 
     icmp_header->checksum           = _compute_checksum((u16*)icmp_header, ICMP_MSG_SIZE);
 }
 
-/* -------------------------------------------------------------------------- */
+static
+FT_RESULT _set_payload(u8* dest, const Pattern* pattern, u32 dst_size) {
+    const u8* src = (u8*)&pattern->content;
+    const u32 value_length = pattern->length;
+
+    /* Set pattern */
+    for (u32 i = 0; i < dst_size; i += value_length) {
+        for (u32 j = 0; j < value_length; j++) {
+#if __BIG_ENDIAN
+            dest[i + j] = src[value_length - j - 1];
+ #elif __LITTLE_ENDIAN
+            dest[i + j] = src[j];
+#endif
+        }
+    }
+
+    /* Set timestamp */
+    if (Gettimeofday((struct timeval*)dest, NULL) == FT_FAILURE)
+        return FT_FAILURE;
+
+    return FT_SUCCESS;
+}
+
+#ifdef __DEBUG
 #include <stdio.h>
-FT_RESULT   send_request() {
+static
+void _debug_msg(const void* payload) {
+    u8 buf2[ICMP_PAYLOAD_SIZE];
+    memcpy(buf2, payload, (ICMP_PAYLOAD_SIZE));
+
+    for (int i = 0; i < (ICMP_PAYLOAD_SIZE); i++)
+        printf("%02x ", buf2[i]);
+
+    printf("\n");
+}
+#endif
+
+/* -------------------------------------------------------------------------- */
+
+FT_RESULT   send_request(void) {
     static u8       send_buffer[BUF_SIZE];
 
     struct iphdr*   ip_header = (struct iphdr*)send_buffer;
     struct icmphdr* icmp_header = (struct icmphdr*)(ip_header + 1);
-    void*           message = (void*)(icmp_header + 1);
+    u8*             payload = (void*)(icmp_header + 1);
 
+    /* IPv4 content */
     _set_ip_header(ip_header);
+
+    /* ICMP content */
+    if (_set_payload(payload, &g_arguments.m_options.m_pattern, ICMP_PAYLOAD_SIZE) == FT_FAILURE)
+        return FT_FAILURE;
     _set_icmp_header(icmp_header);
 
-    Memset64(message, g_arguments.m_options.m_pattern, ICMP_DATA_SIZE / sizeof(u64));
+#ifdef __DEBUG
+    _debug_msg(payload);
+    return FT_SUCCESS;
 
-    //debug
-    u8 buf2[BUF_SIZE];
-    memcpy(buf2, send_buffer, BUF_SIZE);
-    // print
-    for (int i = 0; i < BUF_SIZE; i++) {
-        printf("%02x ", buf2[i]);
-    }
-    printf("\n");
+#endif
 
     return Sendto(
         g_socket.m_fd,

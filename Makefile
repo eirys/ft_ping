@@ -48,6 +48,9 @@ CFLAGS		:=	-MMD \
 				-MP \
 				-std=gnu17
 
+# Enable mode
+debug := 1
+
 ifdef error
 CFLAGS		+=	-Wall \
 				-Wextra \
@@ -57,8 +60,6 @@ endif
 ifdef optimize
 CFLAGS		+=	-O3
 endif
-
-debug = 1
 
 ifdef debug
 CFLAGS		+=	-g
@@ -86,9 +87,8 @@ COMPOSE		:=	docker compose
 all: $(NAME) copy
 
 .PHONY: copy
-copy:
-	@mkdir -p ping_output
-	@cp $(NAME) ping_output
+copy: ping_output
+	cp $(NAME) ping_output
 
 -include $(DEP)
 
@@ -119,8 +119,15 @@ re: fclean all
 # ---------------------------------- DOCKER ---------------------------------- #
 
 .PHONY: up
-up: all
+up: ping_output graphics_permission
 	$(COMPOSE) up -d
+
+ping_output:
+	@mkdir -p ping_output
+
+.PHONY: graphics_permission
+graphics_permission:
+	@xhost +local:docker
 
 .PHONY: down
 down:

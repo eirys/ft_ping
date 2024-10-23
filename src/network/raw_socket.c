@@ -12,15 +12,13 @@
 RawSocket  g_socket = {
     .m_fd = -1,
     .m_ipv4 = NULL,
-    // .m_ip = 0xFFffFFff,
-    // .m_ip_address = NULL
 };
 
 /* -------------------------------------------------------------------------- */
 
 static struct addrinfo* _destination_info = NULL;
 
-static inline
+static
 struct addrinfo* _resolve_ip(const char* destination) {
     struct addrinfo* output;
 
@@ -64,16 +62,16 @@ FT_RESULT create_raw_socket(const char* destination) {
         return _destroy_malformed_data();
     }
 
-    /* Convert binary IPv4 to string */
+    /* Remember sockaddr_in */
     g_socket.m_ipv4 = Malloc(sizeof(struct sockaddr_in));
     if (g_socket.m_ipv4 == NULL) {
         return _destroy_malformed_data();
     }
     *g_socket.m_ipv4 = *(struct sockaddr_in*)_destination_info->ai_addr;
 
+    /* Convert binary IPv4 to string */
     // char ip[INET_ADDRSTRLEN];
     // inet_ntop(AF_INET, &ipv4->sin_addr, ip, INET_ADDRSTRLEN);
-
     // g_socket.m_ip_address = Strdup(ip);
     // if (g_socket.m_ip_address == NULL) {
     //     return _destroy_malformed_data();
