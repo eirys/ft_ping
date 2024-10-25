@@ -68,7 +68,9 @@ FT_RESULT _echo(void) {
 /* -------------------------------------------------------------------------- */
 
 int main(int arg_count, char* const* arg_value) {
-#ifndef __DEBUG
+    int out = EXIT_SUCCESS;
+
+#ifndef __DEBUG //TODO remove
     if (_check_privileges() == FT_FAILURE) {
         return _exit_cleanup(EXIT_FAILURE);
     }
@@ -86,8 +88,10 @@ int main(int arg_count, char* const* arg_value) {
 #ifdef __DEBUG
         _debug_option();
 #endif
-        _echo();
+
+        if (_echo() == FT_FAILURE)
+            out = EXIT_FAILURE;
     }
 
-    return _exit_cleanup(EXIT_SUCCESS);
+    return _exit_cleanup(out);
 }

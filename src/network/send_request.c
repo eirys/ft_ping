@@ -7,6 +7,7 @@
 #include "raw_socket.h"
 #include "wrapper.h"
 #include "options.h"
+#include "log.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -103,20 +104,6 @@ FT_RESULT _set_payload(u8* dest, const Pattern* pattern, u32 dst_size) {
     return FT_SUCCESS;
 }
 
-#ifdef __DEBUG
-#include <stdio.h>
-static
-void _debug_msg(const void* payload) {
-    u8 buf2[ICMP_PAYLOAD_SIZE];
-    memcpy(buf2, payload, (ICMP_PAYLOAD_SIZE));
-
-    for (int i = 0; i < (ICMP_PAYLOAD_SIZE); i++)
-        printf("%02x ", buf2[i]);
-
-    printf("\n");
-}
-#endif
-
 /* -------------------------------------------------------------------------- */
 
 FT_RESULT   send_request(void) {
@@ -134,11 +121,7 @@ FT_RESULT   send_request(void) {
         return FT_FAILURE;
     _set_icmp_header(icmp_header);
 
-#ifdef __DEBUG
-    _debug_msg(payload);
-    return FT_SUCCESS;
-
-#endif
+    log_info("FT_PING %s (%s): %u data bytes", g_arguments.m_destination, g_socket.m_ipv4_str, ICMP_PAYLOAD_SIZE);
 
     return Sendto(
         g_socket.m_fd,

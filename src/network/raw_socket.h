@@ -11,6 +11,7 @@
 typedef struct RawSocket {
     struct sockaddr_in* m_ipv4;
     int                 m_fd;           /* File descriptor */
+    char*               m_ipv4_str;
 } RawSocket;
 
 /* -------------------------------------------------------------------------- */

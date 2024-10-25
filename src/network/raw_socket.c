@@ -70,12 +70,12 @@ FT_RESULT create_raw_socket(const char* destination) {
     *g_socket.m_ipv4 = *(struct sockaddr_in*)_destination_info->ai_addr;
 
     /* Convert binary IPv4 to string */
-    // char ip[INET_ADDRSTRLEN];
-    // inet_ntop(AF_INET, &ipv4->sin_addr, ip, INET_ADDRSTRLEN);
-    // g_socket.m_ip_address = Strdup(ip);
-    // if (g_socket.m_ip_address == NULL) {
-    //     return _destroy_malformed_data();
-    // }
+    char ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &g_socket.m_ipv4->sin_addr, ip, INET_ADDRSTRLEN);
+    g_socket.m_ipv4_str = Strdup(ip);
+    if (g_socket.m_ipv4_str == NULL) {
+        return _destroy_malformed_data();
+    }
 
     /* IP Header: Tell the kernel that we build and include our own IP header */
     const i32 option_value = 1;
@@ -93,5 +93,8 @@ void close_raw_socket(void) {
     }
     if (g_socket.m_ipv4 != NULL) {
         Free(g_socket.m_ipv4);
+    }
+    if (g_socket.m_ipv4_str != NULL) {
+        Free(g_socket.m_ipv4_str);
     }
 }

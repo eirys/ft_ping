@@ -72,6 +72,7 @@ void Memset64(void* dest, u64 value, u32 count) {
 /*                                   SOCKET                                   */
 /* -------------------------------------------------------------------------- */
 
+#if 0
 int Select(
     int nfds,
     fd_set* readfds,
@@ -88,6 +89,7 @@ int Select(
     }
     return fds;
 }
+#endif
 
 int Socket(int domain, int type, int protocol) {
     int fd = socket(domain, type, protocol);
