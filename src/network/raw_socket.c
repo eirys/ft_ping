@@ -1,8 +1,9 @@
 #include "raw_socket.h"
 
-#include <netdb.h>
-#include <string.h>
-#include <arpa/inet.h>
+#include <netdb.h> /* getaddrinfo */
+#include <string.h> /* memset */
+#include <arpa/inet.h> /* inet_ntop */
+#include <fcntl.h> /* fcntl */
 
 #include "log.h"
 #include "wrapper.h"
@@ -12,6 +13,7 @@
 RawSocket  g_socket = {
     .m_fd = -1,
     .m_ipv4 = NULL,
+    .m_ipv4_str = NULL
 };
 
 /* -------------------------------------------------------------------------- */
@@ -78,8 +80,11 @@ FT_RESULT create_raw_socket(const char* destination) {
     }
 
     /* IP Header: Tell the kernel that we build and include our own IP header */
-    const i32 option_value = 1;
+    i32 option_value = 1;
     setsockopt(g_socket.m_fd, IPPROTO_IP, IP_HDRINCL, &option_value, sizeof(option_value));
+
+    /* Set to non blocking */
+    // fcntl(g_socket.m_fd, F_SETFL, O_NONBLOCK);
 
     freeaddrinfo(_destination_info);
     _destination_info = NULL;

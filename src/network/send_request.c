@@ -7,6 +7,7 @@
 #include "raw_socket.h"
 #include "wrapper.h"
 #include "options.h"
+#include "stats.h"
 #include "log.h"
 
 /* -------------------------------------------------------------------------- */
@@ -48,12 +49,6 @@ u16 _compute_checksum(const u16* addr, u16 data_len) {
 
 static
 void _set_ip_header(struct iphdr* ip_header) {
-    static bool is_init = false;
-
-    if (is_init)
-        return;
-    is_init = true;
-
     ip_header->version  = 4U;                               /* IP version: 4 */
     ip_header->ihl      = IP_HEADER_SIZE / sizeof(i32);     /* Size of IP header (in 32-bit words) */
     ip_header->tos      = 0x0;                              /* Common ToS */
@@ -64,19 +59,17 @@ void _set_ip_header(struct iphdr* ip_header) {
     ip_header->protocol = IPPROTO_ICMP;                     /* ICMP protocol */
     ip_header->saddr    = INADDR_ANY;                       /* Source bin ip : let the kernel set it */
     ip_header->daddr    = g_socket.m_ipv4->sin_addr.s_addr; /* Destination bin ip */
-
-    ip_header->check    = _compute_checksum((u16*)ip_header, IP_HEADER_SIZE);
+    ip_header->check    = 0;                                /* Let the kernel set it */
 }
 
 static
 void _set_icmp_header(struct icmphdr* icmp_header) {
-    static u16      sequence = 0;
-
     /* Set it after filling payload with pattern for checksum */
-    icmp_header->type               = ICMP_ECHO;    /* ICMP Echo request */
-    icmp_header->code               = 0U;           /* No specific context */
-    icmp_header->un.echo.id         = g_pid;        /* Aid in matching echo requests/replies */
-    icmp_header->un.echo.sequence   = sequence++;   /* Aid in matching echo requests/replies */
+    icmp_header->type               = ICMP_ECHO;                /* ICMP Echo request */
+    icmp_header->code               = 0U;                       /* No specific context */
+    icmp_header->un.echo.id         = g_pid;                    /* Aid in matching echo requests/replies */
+    icmp_header->un.echo.sequence   = g_stats.m_packet_sent++;  /* Aid in matching echo requests/replies */
+    icmp_header->checksum           = 0;
 
     icmp_header->checksum           = _compute_checksum((u16*)icmp_header, ICMP_MSG_SIZE);
 }
@@ -106,8 +99,8 @@ FT_RESULT _set_payload(u8* dest, const Pattern* pattern, u32 dst_size) {
 
 /* -------------------------------------------------------------------------- */
 
-FT_RESULT   send_request(void) {
-    static u8       send_buffer[BUF_SIZE];
+FT_RESULT   send_request() {
+    u8              send_buffer[BUF_SIZE];
 
     struct iphdr*   ip_header = (struct iphdr*)send_buffer;
     struct icmphdr* icmp_header = (struct icmphdr*)(ip_header + 1);
@@ -121,7 +114,6 @@ FT_RESULT   send_request(void) {
         return FT_FAILURE;
     _set_icmp_header(icmp_header);
 
-    log_info("FT_PING %s (%s): %u data bytes", g_arguments.m_destination, g_socket.m_ipv4_str, ICMP_PAYLOAD_SIZE);
 
     return Sendto(
         g_socket.m_fd,

@@ -5,6 +5,7 @@
 #include "log.h"
 #include "raw_socket.h"
 #include "network_io.h"
+#include "set_alarm.h"
 
 /* --------------------------------- GLOBALS -------------------------------- */
 
@@ -12,17 +13,20 @@ pid_t g_pid;
 
 /* -------------------------------------------------------------------------- */
 
-#ifdef __DEBUG
+// #ifdef __DEBUG
 static
 void _debug_option() {
     log_info("Options:");
     log_info("  --ttl: %d", g_arguments.m_options.m_ttl);
     log_info("  -v: %d", g_arguments.m_options.m_verbose);
+    log_info("  -i: %d", g_arguments.m_options.m_interval);
+    log_info("  -W: %d", g_arguments.m_options.m_linger);
+    log_info("  -n: %d", g_arguments.m_options.m_numeric);
     log_info("  -p: %lu", g_arguments.m_options.m_pattern.content);
     log_info("    : %lu", g_arguments.m_options.m_pattern.length);
     log_info("  --help: %d", g_arguments.m_options.m_help);
 }
-#endif
+// #endif
 
 /* -------------------------------------------------------------------------- */
 
@@ -57,19 +61,23 @@ FT_RESULT _echo(void) {
 
     FT_RESULT out = FT_SUCCESS;
 
-    if (send_request() == FT_FAILURE || wait_response() == FT_FAILURE) {
+    log_info("FT_PING %s (%s): %u data bytes", g_arguments.m_destination, g_socket.m_ipv4_str, ICMP_PAYLOAD_SIZE);
+    ping(42);
+
+    if (wait_response() == FT_FAILURE) {
         out = FT_FAILURE;
     }
 
     close_raw_socket();
+    if (reset_alarm() == FT_FAILURE) {
+        out = FT_FAILURE;
+    }
     return out;
 }
 
 /* -------------------------------------------------------------------------- */
 
 int main(int arg_count, char* const* arg_value) {
-    int out = EXIT_SUCCESS;
-
 #ifndef __DEBUG //TODO remove
     if (_check_privileges() == FT_FAILURE) {
         return _exit_cleanup(EXIT_FAILURE);
@@ -82,6 +90,11 @@ int main(int arg_count, char* const* arg_value) {
         return _exit_cleanup(EXIT_FAILURE);
     }
 
+    /* Set ping */
+    if (set_alarm() == FT_FAILURE) {
+        return _exit_cleanup(EXIT_FAILURE);
+    }
+
     if (g_arguments.m_options.m_help) {
         _show_help(arg_value[0]);
     } else {
@@ -90,8 +103,8 @@ int main(int arg_count, char* const* arg_value) {
 #endif
 
         if (_echo() == FT_FAILURE)
-            out = EXIT_FAILURE;
+            _exit_cleanup(EXIT_FAILURE);
     }
 
-    return _exit_cleanup(out);
+    return _exit_cleanup(EXIT_SUCCESS);
 }

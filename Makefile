@@ -25,12 +25,13 @@ INC_SUBDIRS	:=	$(addprefix $(SRC_DIR)/,$(SUBDIRS))
 SRC_FILES	:=	main.c \
 				$(UTILS_DIR)/log.c \
 				$(UTILS_DIR)/wrapper.c \
-				$(INPUT_DIR)/set_alarm.c \
+				$(UTILS_DIR)/set_alarm.c \
 				$(INPUT_DIR)/options.c \
 				$(INPUT_DIR)/callbacks.c \
 				$(NETWORK_DIR)/raw_socket.c \
 				$(NETWORK_DIR)/receive_msg.c \
-				$(NETWORK_DIR)/send_request.c
+				$(NETWORK_DIR)/send_request.c \
+				$(NETWORK_DIR)/stats.c
 
 SRC			:=	$(addprefix $(SRC_DIR)/,$(SRC_FILES))
 OBJ			:=	$(addprefix $(OBJ_DIR)/,$(SRC_FILES:.c=.o))
@@ -73,7 +74,7 @@ DEFINES		:=	$(addprefix -D,$(MACROS))
 CFLAGS		+=	$(INCLUDES) \
 				$(DEFINES)
 
-LDFLAGS		:=
+LDFLAGS		:=	-lm
 
 # ----------------------------------- MISC ----------------------------------- #
 RM			:=	rm -rf

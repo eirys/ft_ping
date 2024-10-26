@@ -6,8 +6,6 @@
 #include "options.h"
 #include "log.h"
 
-/* -------------------------------- CALLBACKS ------------------------------- */
-
 /**
  * @brief Check if the value is a u8 number, then set flag to integer conversion.
  */
@@ -72,5 +70,8 @@ FT_RESULT hex_check(void* value, void* pflag) {
 //TODO
 FT_RESULT linger_check(void* value, void* pflag) {
     return 1;
+}
 
+FT_RESULT interval_check(void* value, void* pflag) {
+    return 1;
 }

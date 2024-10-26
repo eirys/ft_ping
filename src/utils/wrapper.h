@@ -1,7 +1,8 @@
 #ifndef STRING_H
 # define STRING_H
 
-#include <sys/socket.h>
+#include <sys/socket.h> /* socket */
+#include <signal.h> /* sigaction */
 
 #include "typedefs.h"
 
@@ -24,7 +25,8 @@ FT_RESULT   Close(int fd);
 FT_RESULT   Sendto(int sockfd, const void* buf, u32 len, int flags, const struct sockaddr* dest_addr, socklen_t addrlen);
 ssize_t     Recvfrom(int sockfd, void* buf, u32 len, int flags, struct sockaddr* src_addr, socklen_t* addrlen);
 
-/* ---------------------------------- OTHER --------------------------------- */
+/* --------------------------------- SYSTEM --------------------------------- */
 FT_RESULT   Gettimeofday(struct timeval* tv, void* tz);
+FT_RESULT   Sigaction(int signum, const struct sigaction* new_act, struct sigaction* old_act);
 
 #endif /* STRING_H */

@@ -6,10 +6,7 @@
 #include <sys/socket.h> /* socket */
 #include <stdio.h> /* fprintf */
 #include <sys/time.h> /* gettimeofday */
-
-#ifdef __DEBUG
-# include <errno.h>
-#endif
+# include <errno.h> /* errno */
 
 static
 void _error(const char* function_name, const char* message) {
@@ -72,7 +69,6 @@ void Memset64(void* dest, u64 value, u32 count) {
 /*                                   SOCKET                                   */
 /* -------------------------------------------------------------------------- */
 
-#if 0
 int Select(
     int nfds,
     fd_set* readfds,
@@ -81,15 +77,15 @@ int Select(
     struct timeval* timeout
 ) {
     int fds = select(nfds, readfds, writefds, exceptfds, timeout);
-    if (fds == -1) {
+    if (fds == -1 && errno != EINTR) {
         _error("Select", "failed to listen on file descriptor");
-        return -1;
     } else if (fds == 0) {
         _error("Select", "timeout reached");
+    } else if (errno == EINTR) {
+        return INT32_MAX; /* Fictive value */
     }
     return fds;
 }
-#endif
 
 int Socket(int domain, int type, int protocol) {
     int fd = socket(domain, type, protocol);
@@ -119,9 +115,18 @@ FT_RESULT Sendto(int sockfd, const void* buf, u32 len, int flags, const struct s
 }
 
 ssize_t Recvfrom(int sockfd, void* buf, u32 len, int flags, struct sockaddr* src_addr, socklen_t* addrlen) {
-    const ssize_t bytes = recvfrom(sockfd, buf, len, flags, src_addr, addrlen);
-    if (bytes == -1) {
-        _error("Recv", "failed to receive data");
+    ssize_t bytes;
+    while (true) {
+        bytes = recvfrom(sockfd, buf, len, flags, src_addr, addrlen);
+        if (bytes == -1) {
+            if (errno == EINTR) {
+                continue;
+            }
+            _error("Recv", "failed to receive data");
+            break;
+        } else {
+            break;
+        }
     }
     return bytes;
 }
@@ -136,5 +141,12 @@ FT_RESULT Gettimeofday(struct timeval* tv, void* tz) {
         return FT_FAILURE;
     }
     return FT_SUCCESS;
+}
 
+FT_RESULT Sigaction(int signum, const struct sigaction* new_act, struct sigaction* old_act) {
+    if (sigaction(signum, new_act, old_act) == -1) {
+        _error("Sigaction", "failed to set sigaction");
+        return FT_FAILURE;
+    }
+    return FT_SUCCESS;
 }

@@ -16,12 +16,13 @@ typedef struct s_Pattern {
  * @brief Holds program flags.
  */
 typedef struct s_Options {
-    Pattern m_pattern;
-    i32     m_linger;
-    u8      m_ttl;
-    bool    m_verbose;
-    bool    m_help;
-    bool    m_numeric;
+    Pattern m_pattern;      /* -p --pattern */
+    i32     m_linger;       /* -W --linger */
+    u32     m_interval;     /* -i --interval */
+    u8      m_ttl;          /* --ttl */
+    bool    m_verbose;      /* -v --verbose */
+    bool    m_help;         /* -? --help */
+    bool    m_numeric;      /* -n --numeric */
 } Options;
 
 /**
