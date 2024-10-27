@@ -27,6 +27,6 @@ FT_RESULT   send_request(void);
 /**
  * @brief Wait for an ICMP response.
  */
-FT_RESULT   wait_response(void);//const u8* message, const u32 message_len);
+FT_RESULT   wait_responses(void);//const u8* message, const u32 message_len);
 
 #endif /* NETWORK_IO_H */

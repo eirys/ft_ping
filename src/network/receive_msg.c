@@ -109,6 +109,7 @@ FT_RESULT _process_message(const Packet* packet) {
                 packet->m_ip_header->ttl,
                 rtt);
 
+            g_stats.m_packet_received += 1;
             g_stats.m_min_rtt = MIN(rtt, g_stats.m_min_rtt);
             g_stats.m_max_rtt = MAX(rtt, g_stats.m_max_rtt);
             g_stats.m_total_rtt += rtt;
@@ -120,9 +121,13 @@ FT_RESULT _process_message(const Packet* packet) {
         // if (g_arguments.m_options.m_verbose)
             // do extra stuff
 
-    } else if (g_arguments.m_options.m_verbose) {
+    } else {
         log_debug("_process_message", "received different ICMP packet than expected");
-        // do stuff
+
+        if (g_arguments.m_options.m_verbose) {
+            // do stuff
+        }
+        return FT_SUCCESS;
     }
 
     return FT_FAILURE;
@@ -130,7 +135,7 @@ FT_RESULT _process_message(const Packet* packet) {
 
 /* -------------------------------------------------------------------------- */
 
-FT_RESULT wait_response() {
+FT_RESULT wait_responses() {
     u8 message[BUF_SIZE];
 
     struct timeval timeout;
@@ -141,7 +146,7 @@ FT_RESULT wait_response() {
     FD_ZERO(&listen_fds);
     FD_SET(g_socket.m_fd, &listen_fds);
 
-    while (true) {
+    while (g_stats.m_packet_received < g_arguments.m_options.m_count) {
         int fds = Select(g_socket.m_fd + 1, &listen_fds, NULL, NULL, &timeout);
         if (fds == -1)
             return FT_FAILURE;

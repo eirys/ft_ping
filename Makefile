@@ -25,7 +25,7 @@ INC_SUBDIRS	:=	$(addprefix $(SRC_DIR)/,$(SUBDIRS))
 SRC_FILES	:=	main.c \
 				$(UTILS_DIR)/log.c \
 				$(UTILS_DIR)/wrapper.c \
-				$(UTILS_DIR)/set_alarm.c \
+				$(UTILS_DIR)/set_signals.c \
 				$(INPUT_DIR)/options.c \
 				$(INPUT_DIR)/callbacks.c \
 				$(NETWORK_DIR)/raw_socket.c \

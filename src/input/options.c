@@ -13,6 +13,7 @@ Arguments g_arguments = {
     .m_options.m_pattern.length = 4U,
     .m_options.m_linger = INT32_MAX,
     .m_options.m_interval = 1U,
+    .m_options.m_count = UINT32_MAX,
     .m_options.m_ttl = UINT8_MAX,
     .m_options.m_verbose = false,
     .m_options.m_help = false,
@@ -54,6 +55,8 @@ enum e_OptionIndex {
     OPT_INDEX_TTL_LONG,
     OPT_INDEX_W_LINGER,
     OPT_INDEX_W_LINGER_LONG,
+    OPT_INDEX_C,
+    OPT_INDEX_C_LONG,
 
     OPTION_COUNT
 };
@@ -68,6 +71,7 @@ enum e_ShortOptionFlag {
     FLAG_N = 'n',
     FLAG_I = 'i',
     FLAG_W_LINGER = 'W',
+    FLAG_C = 'c',
 
     FLAG_LONG = 0,
     FLAG_END = -1,
@@ -84,6 +88,7 @@ enum e_LongOptionIndex {
     LONG_OPT_INDEX_PATTERN,
     LONG_OPT_INDEX_LINGER,
     LONG_OPT_INDEX_INTERVAL,
+    LONG_OPT_INDEX_COUNT,
 
     LONG_OPTION_COUNT
 };
@@ -101,7 +106,7 @@ void _enable_flag(bool* flag) {
 }
 
 static
-FT_RESULT _set_flag(void* flag, FT_RESULT (*process_value)(void*, void*)) {
+FT_RESULT _set_flag(void* flag, FT_RESULT (*process_value)(char*, void*)) {
     if (flag == NULL) {
         log_debug("_set_flag", "improper address for flag");
         return FT_FAILURE;
@@ -131,16 +136,18 @@ FT_RESULT _retrieve_options(const int arg_count, char* const* arg_values) {
         [LONG_OPT_INDEX_PATTERN] = 0,
         [LONG_OPT_INDEX_LINGER] = 0,
         [LONG_OPT_INDEX_INTERVAL] = 0,
+        [LONG_OPT_INDEX_COUNT] = 0
     };
 
     struct option option_descriptors[OPTION_COUNT + 1] = {
         /* Short options */
         { "?",          no_argument,        NULL,                                   FLAG_HELP_QM },
+        { "n",          no_argument,        NULL,                                   FLAG_N },
         { "v",          no_argument,        NULL,                                   FLAG_V },
         { "p",          required_argument,  NULL,                                   FLAG_P },
-        { "n",          no_argument,        NULL,                                   FLAG_N },
         { "W",          required_argument,  NULL,                                   FLAG_W_LINGER },
         { "i",          required_argument,  NULL,                                   FLAG_I },
+        { "c",          required_argument,  NULL,                                   FLAG_C },
         /* Long options */
         { "help",       no_argument,        &long_option[LONG_OPT_INDEX_HELP],      1 },
         { "verbose",    no_argument,        &long_option[LONG_OPT_INDEX_VERBOSE],   1 },
@@ -149,6 +156,7 @@ FT_RESULT _retrieve_options(const int arg_count, char* const* arg_values) {
         { "pattern",    required_argument,  &long_option[LONG_OPT_INDEX_PATTERN],   1 },
         { "linger",     required_argument,  &long_option[LONG_OPT_INDEX_LINGER],    1 },
         { "interval",   required_argument,  &long_option[LONG_OPT_INDEX_INTERVAL],  1 },
+        { "count",      required_argument,  &long_option[LONG_OPT_INDEX_COUNT],     1 },
         { 0, 0, 0, 0 }
     };
 
@@ -160,10 +168,11 @@ FT_RESULT _retrieve_options(const int arg_count, char* const* arg_values) {
         switch (option) {
             /* Long options */
             case FLAG_LONG:
-                     if (long_option[LONG_OPT_INDEX_TTL]) { if (_set_flag((void*)&options->m_ttl, ttl_check) == FT_FAILURE) { return FT_FAILURE; }; }
+                     if (long_option[LONG_OPT_INDEX_TTL]) { if (_set_flag((void*)&options->m_ttl, uchar_check) == FT_FAILURE) { return FT_FAILURE; }; }
                 else if (long_option[LONG_OPT_INDEX_PATTERN]) {  if (_set_flag((void*)&options->m_pattern, hex_check) == FT_FAILURE) { return FT_FAILURE; }; }
-                else if (long_option[LONG_OPT_INDEX_LINGER]) {  if (_set_flag((void*)&options->m_linger, linger_check) == FT_FAILURE) { return FT_FAILURE; }; }
-                else if (long_option[LONG_OPT_INDEX_INTERVAL]) {  if (_set_flag((void*)&options->m_interval, interval_check) == FT_FAILURE) { return FT_FAILURE; }; }
+                else if (long_option[LONG_OPT_INDEX_LINGER]) {  if (_set_flag((void*)&options->m_linger, int_check) == FT_FAILURE) { return FT_FAILURE; }; }
+                else if (long_option[LONG_OPT_INDEX_INTERVAL]) {  if (_set_flag((void*)&options->m_interval, int_check) == FT_FAILURE) { return FT_FAILURE; }; }
+                else if (long_option[LONG_OPT_INDEX_COUNT]) {  if (_set_flag((void*)&options->m_count, int_check) == FT_FAILURE) { return FT_FAILURE; }; }
                 else if (long_option[LONG_OPT_INDEX_NUMERIC]) { _enable_flag(&options->m_numeric); }
                 else if (long_option[LONG_OPT_INDEX_VERBOSE]) { _enable_flag(&options->m_verbose); }
                 else if (long_option[LONG_OPT_INDEX_HELP]) { _enable_flag(&options->m_help); return FT_SUCCESS; }
@@ -176,7 +185,9 @@ FT_RESULT _retrieve_options(const int arg_count, char* const* arg_values) {
             case FLAG_N:            _enable_flag(&options->m_numeric); break;
             case FLAG_HELP_QM:      if (optopt == 0) { _enable_flag(&options->m_help); return FT_SUCCESS; } else { return FT_FAILURE; }
             case FLAG_P:            if (_set_flag((void*)&options->m_pattern, hex_check) == FT_FAILURE) { return FT_FAILURE; } break;
-            case FLAG_W_LINGER:     if (_set_flag((void*)&options->m_linger, linger_check) == FT_FAILURE) { return FT_FAILURE; } break;
+            case FLAG_W_LINGER:     if (_set_flag((void*)&options->m_linger, int_check) == FT_FAILURE) { return FT_FAILURE; } break;
+            case FLAG_I:            if (_set_flag((void*)&options->m_interval, int_check) == FT_FAILURE) { return FT_FAILURE; } break;
+            case FLAG_C:            if (_set_flag((void*)&options->m_count, int_check) == FT_FAILURE) { return FT_FAILURE; } break;
 
             case FLAG_END:          return FT_SUCCESS;
 
@@ -211,9 +222,4 @@ FT_RESULT retrieve_arguments(const int arg_count, char* const* arg_values) {
     log_info("destination: `%s'", g_arguments.m_destination);
 
     return FT_SUCCESS;
-}
-
-void destroy_options(void) {
-    Options* options = &g_arguments.m_options;
-
 }

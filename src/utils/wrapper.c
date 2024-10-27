@@ -79,9 +79,7 @@ int Select(
     int fds = select(nfds, readfds, writefds, exceptfds, timeout);
     if (fds == -1 && errno != EINTR) {
         _error("Select", "failed to listen on file descriptor");
-    } else if (fds == 0) {
-        _error("Select", "timeout reached");
-    } else if (errno == EINTR) {
+    } else if (fds == -1 && errno == EINTR) {
         return INT32_MAX; /* Fictive value */
     }
     return fds;

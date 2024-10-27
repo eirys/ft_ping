@@ -22,7 +22,8 @@ typedef struct s_PingStats {
 /*                                   GLOBALS                                  */
 /* -------------------------------------------------------------------------- */
 
-extern PingStats g_stats;
+extern PingStats    g_stats;
+extern bool         g_ongoing;
 
 /* -------------------------------------------------------------------------- */
 /*                                 PROTOTYPES                                 */

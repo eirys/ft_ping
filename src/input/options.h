@@ -19,6 +19,7 @@ typedef struct s_Options {
     Pattern m_pattern;      /* -p --pattern */
     i32     m_linger;       /* -W --linger */
     u32     m_interval;     /* -i --interval */
+    u32     m_count;        /* -c --count */
     u8      m_ttl;          /* --ttl */
     bool    m_verbose;      /* -v --verbose */
     bool    m_help;         /* -? --help */
@@ -44,6 +45,5 @@ extern Arguments g_arguments;
 /* -------------------------------------------------------------------------- */
 
 FT_RESULT   retrieve_arguments(const int arg_count, char* const* arg_values);
-void        destroy_options(void);
 
 #endif /* OPTIONS_H */
