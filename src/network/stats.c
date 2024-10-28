@@ -30,13 +30,15 @@ void display_stats() {
     log_info("--- %s statistics ---", g_arguments.m_destination);
 
     log_info("%u packets transmitted, %u packets received, %u%% packets lost",
-    g_stats.m_packet_sent,
-    g_stats.m_packet_received,
-    ((g_stats.m_packet_sent - g_stats.m_packet_received) / g_stats.m_packet_sent) * 100U);
+        g_stats.m_packet_sent,
+        g_stats.m_packet_received,
+        (u32)((float)(g_stats.m_packet_sent - g_stats.m_packet_received) * 100.0f / (float)g_stats.m_packet_sent)
+    );
 
     if (g_stats.m_packet_received == 0) {
         return;
     }
+
     const double mean = g_stats.m_total_rtt / (double)g_stats.m_packet_sent;
     const double smean = g_stats.m_total_rtt_square / (double)g_stats.m_packet_sent;
     log_info("round-trip min/avg/max/stddev = %.3f/%.3f/%.3f/%.3f ms",

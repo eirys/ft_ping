@@ -4,6 +4,7 @@
 #include "options.h"
 #include "callbacks.h"
 #include "log.h"
+#include "network_io.h"
 #include "wrapper.h"
 
 /* --------------------------------- GLOBALS -------------------------------- */
@@ -11,9 +12,10 @@
 Arguments g_arguments = {
     .m_options.m_pattern.content = 0xDEadBEef,
     .m_options.m_pattern.length = 4U,
-    .m_options.m_linger = INT32_MAX,
+    .m_options.m_timeout = INT32_MAX,
     .m_options.m_interval = 1U,
     .m_options.m_count = UINT32_MAX,
+    .m_options.m_size = ICMP_MSG_SIZE - ICMP_HEADER_SIZE, /* Default is 56 */
     .m_options.m_ttl = UINT8_MAX,
     .m_options.m_verbose = false,
     .m_options.m_help = false,
@@ -53,10 +55,12 @@ enum e_OptionIndex {
     OPT_INDEX_I_LONG,
     OPT_INDEX_TTL,
     OPT_INDEX_TTL_LONG,
-    OPT_INDEX_W_LINGER,
-    OPT_INDEX_W_LINGER_LONG,
+    OPT_INDEX_W,
+    OPT_INDEX_W_LONG,
     OPT_INDEX_C,
     OPT_INDEX_C_LONG,
+    OPT_INDEX_S,
+    OPT_INDEX_S_LONG,
 
     OPTION_COUNT
 };
@@ -70,8 +74,9 @@ enum e_ShortOptionFlag {
     FLAG_HELP_QM = '?',
     FLAG_N = 'n',
     FLAG_I = 'i',
-    FLAG_W_LINGER = 'W',
+    FLAG_W = 'w',
     FLAG_C = 'c',
+    FLAG_S = 's',
 
     FLAG_LONG = 0,
     FLAG_END = -1,
@@ -86,9 +91,10 @@ enum e_LongOptionIndex {
     LONG_OPT_INDEX_NUMERIC,
     LONG_OPT_INDEX_TTL,
     LONG_OPT_INDEX_PATTERN,
-    LONG_OPT_INDEX_LINGER,
+    LONG_OPT_INDEX_TIMEOUT,
     LONG_OPT_INDEX_INTERVAL,
     LONG_OPT_INDEX_COUNT,
+    LONG_OPT_INDEX_SIZE,
 
     LONG_OPTION_COUNT
 };
@@ -134,9 +140,10 @@ FT_RESULT _retrieve_options(const int arg_count, char* const* arg_values) {
         [LONG_OPT_INDEX_NUMERIC] = 0,
         [LONG_OPT_INDEX_TTL] = 0,
         [LONG_OPT_INDEX_PATTERN] = 0,
-        [LONG_OPT_INDEX_LINGER] = 0,
+        [LONG_OPT_INDEX_TIMEOUT] = 0,
         [LONG_OPT_INDEX_INTERVAL] = 0,
-        [LONG_OPT_INDEX_COUNT] = 0
+        [LONG_OPT_INDEX_COUNT] = 0,
+        [LONG_OPT_INDEX_SIZE] = 0
     };
 
     struct option option_descriptors[OPTION_COUNT + 1] = {
@@ -145,22 +152,24 @@ FT_RESULT _retrieve_options(const int arg_count, char* const* arg_values) {
         { "n",          no_argument,        NULL,                                   FLAG_N },
         { "v",          no_argument,        NULL,                                   FLAG_V },
         { "p",          required_argument,  NULL,                                   FLAG_P },
-        { "W",          required_argument,  NULL,                                   FLAG_W_LINGER },
+        { "w",          required_argument,  NULL,                                   FLAG_W },
         { "i",          required_argument,  NULL,                                   FLAG_I },
         { "c",          required_argument,  NULL,                                   FLAG_C },
+        { "s",          required_argument,  NULL,                                   FLAG_S },
         /* Long options */
         { "help",       no_argument,        &long_option[LONG_OPT_INDEX_HELP],      1 },
         { "verbose",    no_argument,        &long_option[LONG_OPT_INDEX_VERBOSE],   1 },
         { "numeric",    no_argument,        &long_option[LONG_OPT_INDEX_NUMERIC],   1 },
         { "ttl",        required_argument,  &long_option[LONG_OPT_INDEX_TTL],       1 },
         { "pattern",    required_argument,  &long_option[LONG_OPT_INDEX_PATTERN],   1 },
-        { "linger",     required_argument,  &long_option[LONG_OPT_INDEX_LINGER],    1 },
+        { "timeout",    required_argument,  &long_option[LONG_OPT_INDEX_TIMEOUT],   1 },
         { "interval",   required_argument,  &long_option[LONG_OPT_INDEX_INTERVAL],  1 },
         { "count",      required_argument,  &long_option[LONG_OPT_INDEX_COUNT],     1 },
+        { "size",       required_argument,  &long_option[LONG_OPT_INDEX_SIZE],      1 },
         { 0, 0, 0, 0 }
     };
 
-    const char* short_options = "?vp:nW:i:";
+    const char* short_options = "?vn" "p:w:i:c:s:";
 
     while (true) {
         option = getopt_long(arg_count, arg_values, short_options, option_descriptors, NULL);
@@ -170,9 +179,10 @@ FT_RESULT _retrieve_options(const int arg_count, char* const* arg_values) {
             case FLAG_LONG:
                      if (long_option[LONG_OPT_INDEX_TTL]) { if (_set_flag((void*)&options->m_ttl, uchar_check) == FT_FAILURE) { return FT_FAILURE; }; }
                 else if (long_option[LONG_OPT_INDEX_PATTERN]) {  if (_set_flag((void*)&options->m_pattern, hex_check) == FT_FAILURE) { return FT_FAILURE; }; }
-                else if (long_option[LONG_OPT_INDEX_LINGER]) {  if (_set_flag((void*)&options->m_linger, int_check) == FT_FAILURE) { return FT_FAILURE; }; }
+                else if (long_option[LONG_OPT_INDEX_TIMEOUT]) {  if (_set_flag((void*)&options->m_timeout, int_check) == FT_FAILURE) { return FT_FAILURE; }; }
                 else if (long_option[LONG_OPT_INDEX_INTERVAL]) {  if (_set_flag((void*)&options->m_interval, int_check) == FT_FAILURE) { return FT_FAILURE; }; }
                 else if (long_option[LONG_OPT_INDEX_COUNT]) {  if (_set_flag((void*)&options->m_count, int_check) == FT_FAILURE) { return FT_FAILURE; }; }
+                else if (long_option[LONG_OPT_INDEX_SIZE]) {  if (_set_flag((void*)&options->m_size, int_check) == FT_FAILURE) { return FT_FAILURE; }; }
                 else if (long_option[LONG_OPT_INDEX_NUMERIC]) { _enable_flag(&options->m_numeric); }
                 else if (long_option[LONG_OPT_INDEX_VERBOSE]) { _enable_flag(&options->m_verbose); }
                 else if (long_option[LONG_OPT_INDEX_HELP]) { _enable_flag(&options->m_help); return FT_SUCCESS; }
@@ -181,13 +191,14 @@ FT_RESULT _retrieve_options(const int arg_count, char* const* arg_values) {
                 break;
 
             /* Short options */
+            case FLAG_HELP_QM:      if (optopt == 0) { _enable_flag(&options->m_help); return FT_SUCCESS; } else { return FT_FAILURE; }
             case FLAG_V:            _enable_flag(&options->m_verbose); break;
             case FLAG_N:            _enable_flag(&options->m_numeric); break;
-            case FLAG_HELP_QM:      if (optopt == 0) { _enable_flag(&options->m_help); return FT_SUCCESS; } else { return FT_FAILURE; }
             case FLAG_P:            if (_set_flag((void*)&options->m_pattern, hex_check) == FT_FAILURE) { return FT_FAILURE; } break;
-            case FLAG_W_LINGER:     if (_set_flag((void*)&options->m_linger, int_check) == FT_FAILURE) { return FT_FAILURE; } break;
+            case FLAG_W:            if (_set_flag((void*)&options->m_timeout, int_check) == FT_FAILURE) { return FT_FAILURE; } break;
             case FLAG_I:            if (_set_flag((void*)&options->m_interval, int_check) == FT_FAILURE) { return FT_FAILURE; } break;
             case FLAG_C:            if (_set_flag((void*)&options->m_count, int_check) == FT_FAILURE) { return FT_FAILURE; } break;
+            case FLAG_S:            if (_set_flag((void*)&options->m_size, int_check) == FT_FAILURE) { return FT_FAILURE; } break;
 
             case FLAG_END:          return FT_SUCCESS;
 
@@ -219,7 +230,7 @@ FT_RESULT retrieve_arguments(const int arg_count, char* const* arg_values) {
         return FT_FAILURE;
     }
 
-    log_info("destination: `%s'", g_arguments.m_destination);
+    log_debug("retrieve_arguments", "destination: `%s'", g_arguments.m_destination);
 
     return FT_SUCCESS;
 }

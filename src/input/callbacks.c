@@ -6,6 +6,8 @@
 #include "options.h"
 #include "log.h"
 
+/* -------------------------------------------------------------------------- */
+
 static
 FT_RESULT _check_str_kind(char* value, int (*kind)(int)) {
     const char* copy = value;
@@ -20,6 +22,8 @@ FT_RESULT _check_str_kind(char* value, int (*kind)(int)) {
 
     return FT_SUCCESS;
 }
+
+/* -------------------------------------------------------------------------- */
 
 /**
  * @brief Check if the value is a u8 number, then set flag to integer conversion.
@@ -44,7 +48,11 @@ FT_RESULT uchar_check(char* value, void* pflag) {
  * @brief Check if the value is hex, then set flag to uint conversion.
  */
 FT_RESULT hex_check(char* value, void* pflag) {
-    u32         len = strlen(value);
+    if (strncmp(value, "0x", 2) == 0) {
+        value += 2;
+    }
+
+    const u32 len = strlen(value);
 
     if (_check_str_kind(value, isxdigit) == FT_FAILURE) {
         return FT_FAILURE;
@@ -55,17 +63,6 @@ FT_RESULT hex_check(char* value, void* pflag) {
         return FT_FAILURE;
 
     }
-
-    // while (value[len]) {
-    //     if (!isxdigit(value[len])) {
-    //         log_error("invalid argument: `%s`", (char*)value);
-    //         return FT_FAILURE;
-    //     }
-    //     if (++len > 16) {
-    //         log_error("failed to set pattern flag (value too long, only up to 16 bytes allowed)");
-    //         return FT_FAILURE;
-    //     }
-    // }
 
     /* Process 2 bytes at a time */
     u64 result = 0;

@@ -1,8 +1,7 @@
 #include "network_io.h"
 
-#include <netinet/ip.h> /* struct iphdr */
-#include <netinet/ip_icmp.h> /* struct icmp */
 #include <string.h> /* strlen */
+#include <stdio.h> /* printf */
 
 #include "raw_socket.h"
 #include "wrapper.h"
@@ -12,7 +11,8 @@
 
 /* -------------------------------------------------------------------------- */
 
-#define BUF_SIZE            (ICMP_MSG_SIZE + IP_HEADER_SIZE)
+u8* g_send_buffer = NULL;
+u32 g_send_buffer_size = 0U;
 
 /* -------------------------------------------------------------------------- */
 
@@ -48,22 +48,24 @@ u16 _compute_checksum(const u16* addr, u16 data_len) {
 }
 
 static
-void _set_ip_header(struct iphdr* ip_header) {
+void _set_ip_header(struct iphdr* ip_header, u32 packet_size) {
     ip_header->version  = 4U;                               /* IP version: 4 */
     ip_header->ihl      = IP_HEADER_SIZE / sizeof(i32);     /* Size of IP header (in 32-bit words) */
     ip_header->tos      = 0x0;                              /* Common ToS */
-    ip_header->tot_len  = htons(BUF_SIZE);                  /* Length of IP header + data */
-    ip_header->id       = htons(0U);                        /* Let the kernel set it */
+    ip_header->tot_len  = htons(packet_size);               /* Length of IP header + data */
+    ip_header->id       = htons(42U);                       /* Random value */
     ip_header->frag_off = htons(0U);                        /* No fragmentation offset */
     ip_header->ttl      = g_arguments.m_options.m_ttl;      /* By default, TTL set to UCHAR_MAX. */
     ip_header->protocol = IPPROTO_ICMP;                     /* ICMP protocol */
     ip_header->saddr    = INADDR_ANY;                       /* Source bin ip : let the kernel set it */
     ip_header->daddr    = g_socket.m_ipv4->sin_addr.s_addr; /* Destination bin ip */
-    ip_header->check    = 0;                                /* Let the kernel set it */
+    ip_header->check    = 0;
+
+    ip_header->check    = _compute_checksum((u16*)ip_header, IP_HEADER_SIZE);
 }
 
 static
-void _set_icmp_header(struct icmphdr* icmp_header) {
+void _set_icmp_header(struct icmphdr* icmp_header, u32 icmp_size) {
     /* Set it after filling payload with pattern for checksum */
     icmp_header->type               = ICMP_ECHO;                /* ICMP Echo request */
     icmp_header->code               = 0U;                       /* No specific context */
@@ -71,54 +73,61 @@ void _set_icmp_header(struct icmphdr* icmp_header) {
     icmp_header->un.echo.sequence   = g_stats.m_packet_sent++;  /* Aid in matching echo requests/replies */
     icmp_header->checksum           = 0;
 
-    icmp_header->checksum           = _compute_checksum((u16*)icmp_header, ICMP_MSG_SIZE);
+    icmp_header->checksum           = _compute_checksum((u16*)icmp_header, icmp_size);
 }
 
 static
-FT_RESULT _set_payload(u8* dest, const Pattern* pattern, u32 dst_size) {
-    const u8* src = (u8*)&pattern->content;
+FT_RESULT _set_payload(u8* payload, const Pattern* pattern, u32 payload_size) {
     const u32 value_length = pattern->length;
 
     /* Set pattern */
-    for (u32 i = 0; i < dst_size; i += value_length) {
+    for (u32 i = 0; i < payload_size; i += value_length) {
         for (u32 j = 0; j < value_length; j++) {
-#if __BIG_ENDIAN
-            dest[i + j] = src[value_length - j - 1];
- #elif __LITTLE_ENDIAN
-            dest[i + j] = src[j];
-#endif
+            payload[i + j] = pattern->raw[value_length - j - 1];
         }
     }
 
     /* Set timestamp */
-    if (Gettimeofday((struct timeval*)dest, NULL) == FT_FAILURE)
-        return FT_FAILURE;
+    if (payload_size >= sizeof(struct timeval)) {
+        if (Gettimeofday((struct timeval*)payload, NULL) == FT_FAILURE)
+            return FT_FAILURE;
+    }
 
     return FT_SUCCESS;
 }
 
 /* -------------------------------------------------------------------------- */
 
-FT_RESULT   send_request() {
-    u8              send_buffer[BUF_SIZE];
+void destroy_buffer() {
+    if (g_send_buffer != NULL)
+        Free(g_send_buffer);
+}
 
-    struct iphdr*   ip_header = (struct iphdr*)send_buffer;
-    struct icmphdr* icmp_header = (struct icmphdr*)(ip_header + 1);
-    u8*             payload = (void*)(icmp_header + 1);
+FT_RESULT allocate_buffer() {
+    if (g_send_buffer == NULL) {
+        g_send_buffer_size = (IP_HEADER_SIZE + ICMP_HEADER_SIZE + g_arguments.m_options.m_size);
+        g_send_buffer = Malloc(g_send_buffer_size);
+        if (g_send_buffer == NULL) {
+            return FT_FAILURE;
+        }
+    }
+    return FT_SUCCESS;
+}
 
-    /* IPv4 content */
-    _set_ip_header(ip_header);
+FT_RESULT send_request() {
+    struct iphdr*   ip = (struct iphdr*)g_send_buffer;
+    struct icmphdr* icmp = (struct icmphdr*)(g_send_buffer + IP_HEADER_SIZE);
+    u8*             payload = (u8*)(g_send_buffer + IP_HEADER_SIZE + ICMP_HEADER_SIZE);
 
-    /* ICMP content */
-    if (_set_payload(payload, &g_arguments.m_options.m_pattern, ICMP_PAYLOAD_SIZE) == FT_FAILURE)
+    _set_ip_header(ip, g_send_buffer_size);
+    if (_set_payload(payload, &g_arguments.m_options.m_pattern, g_arguments.m_options.m_size) == FT_FAILURE)
         return FT_FAILURE;
-    _set_icmp_header(icmp_header);
-
+    _set_icmp_header(icmp, ICMP_HEADER_SIZE + g_arguments.m_options.m_size);
 
     return Sendto(
         g_socket.m_fd,
-        send_buffer,
-        BUF_SIZE,
+        g_send_buffer,
+        g_send_buffer_size,
         0x0, /* No flags */
         (struct sockaddr*)g_socket.m_ipv4,
         sizeof(struct sockaddr_in));

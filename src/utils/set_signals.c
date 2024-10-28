@@ -15,38 +15,45 @@ static struct sigaction old_sigint;
 
 /* -------------------------------------------------------------------------- */
 
-void ping(__attribute__((unused)) int signal) {
-    // TODO stats
-    send_request();
-
-    alarm(g_arguments.m_options.m_interval);
-}
-
-FT_RESULT reset_signals(void) {
+void reset_signals(void) {
     if (Sigaction(SIGALRM, &old_alarm, NULL) == FT_FAILURE) {
         log_error("failed to reset alarm");
-        return FT_FAILURE;
-    } else if (Sigaction(SIGINT, &old_sigint, NULL) == FT_FAILURE) {
-        log_error("failed to reset sigint");
-        return FT_FAILURE;
     }
-    return FT_SUCCESS;
+    if (Sigaction(SIGINT, &old_sigint, NULL) == FT_FAILURE) {
+        log_error("failed to reset sigint");
+    }
 }
 
 void stop(__attribute__((unused)) int signal) {
-    display_stats();
-
     reset_signals();
+    display_stats();
     close_raw_socket();
-
+    destroy_buffer();
     exit(EXIT_SUCCESS);
+}
+
+void ping(__attribute__((unused)) int signal) {
+    if (send_request() == FT_FAILURE) {
+        log_error("failed to send request");
+
+        reset_signals();
+        close_raw_socket();
+        destroy_buffer();
+        exit(EXIT_FAILURE);
+    }
+
+    if (g_stats.m_packet_sent < g_arguments.m_options.m_count) {
+        alarm(g_arguments.m_options.m_interval);
+    }
 }
 
 FT_RESULT set_signals(void) {
     if (Sigaction(SIGALRM, NULL, &old_alarm) == FT_FAILURE) {
         log_error("failed to save old alarm");
         return FT_FAILURE;
-    } else if (Sigaction(SIGINT, NULL, &old_sigint) == FT_FAILURE) {
+    }
+
+    if (Sigaction(SIGINT, NULL, &old_sigint) == FT_FAILURE) {
         log_error("failed to save old sigint");
         return FT_FAILURE;
     }

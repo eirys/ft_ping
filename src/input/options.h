@@ -8,7 +8,12 @@
 /* -------------------------------------------------------------------------- */
 
 typedef struct s_Pattern {
-    u64     content;    /* hex content */
+    union {
+        u64     _content;    /* hex content */
+        u8      _raw[8];   /* bytes content */
+    } _un;
+#define content _un._content
+#define raw   _un._raw
     u32     length;     /* Pattern length in bytes (0 - 16) */
 } Pattern;
 
@@ -16,14 +21,15 @@ typedef struct s_Pattern {
  * @brief Holds program flags.
  */
 typedef struct s_Options {
-    Pattern m_pattern;      /* -p --pattern */
-    i32     m_linger;       /* -W --linger */
-    u32     m_interval;     /* -i --interval */
-    u32     m_count;        /* -c --count */
-    u8      m_ttl;          /* --ttl */
+    Pattern m_pattern;      /* -p --pattern : pattern to fill ICMP payload */
+    i32     m_timeout;      /* -w --timeout : time to wait for a response */
+    u32     m_interval;     /* -i --interval : interval between each packet */
+    u32     m_count;        /* -c --count: number of packets to send */
+    u32     m_size;         /* -s --size : size of the ICMP payload */
+    u8      m_ttl;          /* --ttl : time to live */
+    bool    m_numeric;      /* -n --numeric : display numeric addresses */
     bool    m_verbose;      /* -v --verbose */
     bool    m_help;         /* -? --help */
-    bool    m_numeric;      /* -n --numeric */
 } Options;
 
 /**

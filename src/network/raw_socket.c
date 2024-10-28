@@ -1,6 +1,5 @@
 #include "raw_socket.h"
 
-#include <netdb.h> /* getaddrinfo */
 #include <string.h> /* memset */
 #include <arpa/inet.h> /* inet_ntop */
 #include <fcntl.h> /* fcntl */
@@ -30,9 +29,7 @@ struct addrinfo* _resolve_ip(const char* destination) {
     hints.ai_socktype = SOCK_RAW;       /* Raw socket */
     hints.ai_protocol = IPPROTO_ICMP;   /* IMCPv4 */
 
-    int result = getaddrinfo(destination, NULL, &hints, &output);
-    if (result != 0) {
-        log_error("getaddrinfo failed: %s", gai_strerror(result));
+    if (Getaddrinfo(destination, NULL, &hints, &output) == FT_FAILURE) {
         return NULL;
     }
 
@@ -82,9 +79,6 @@ FT_RESULT create_raw_socket(const char* destination) {
     /* IP Header: Tell the kernel that we build and include our own IP header */
     i32 option_value = 1;
     setsockopt(g_socket.m_fd, IPPROTO_IP, IP_HDRINCL, &option_value, sizeof(option_value));
-
-    /* Set to non blocking */
-    // fcntl(g_socket.m_fd, F_SETFL, O_NONBLOCK);
 
     freeaddrinfo(_destination_info);
     _destination_info = NULL;

@@ -6,7 +6,8 @@
 #include <sys/socket.h> /* socket */
 #include <stdio.h> /* fprintf */
 #include <sys/time.h> /* gettimeofday */
-# include <errno.h> /* errno */
+#include <errno.h> /* errno */
+#include "log.h"
 
 static
 void _error(const char* function_name, const char* message) {
@@ -127,6 +128,33 @@ ssize_t Recvfrom(int sockfd, void* buf, u32 len, int flags, struct sockaddr* src
         }
     }
     return bytes;
+}
+
+int Getaddrinfo(const char* node, const char* service, const struct addrinfo* hints, struct addrinfo** res) {
+    int result = getaddrinfo(node, service, hints, res);
+
+    switch (result) {
+        case 0:
+            return FT_SUCCESS;
+
+        case EAI_NONAME:
+        case EAI_AGAIN:
+        case EAI_FAIL:
+            log_error("unknown host");
+            break;
+
+        default: /* System error */
+            _error("Getaddrinfo", gai_strerror(result));
+            break;
+    }
+    return FT_FAILURE;
+}
+
+FT_RESULT   Getnameinfo(const struct sockaddr* sa, socklen_t salen, char* host, u32 hostlen, char* serv, u32 servlen, int flags) {
+    if (getnameinfo(sa, salen, host, hostlen, serv, servlen, flags) != 0) {
+        return FT_FAILURE;
+    }
+    return FT_SUCCESS;
 }
 
 /* -------------------------------------------------------------------------- */

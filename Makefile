@@ -29,7 +29,7 @@ SRC_FILES	:=	main.c \
 				$(INPUT_DIR)/options.c \
 				$(INPUT_DIR)/callbacks.c \
 				$(NETWORK_DIR)/raw_socket.c \
-				$(NETWORK_DIR)/receive_msg.c \
+				$(NETWORK_DIR)/wait_responses.c \
 				$(NETWORK_DIR)/send_request.c \
 				$(NETWORK_DIR)/stats.c
 
@@ -50,8 +50,10 @@ CFLAGS		:=	-MMD \
 				-MP \
 				-std=gnu17
 
-# Enable mode
-debug := 1
+# Enable modes ------
+# debug := 1
+error := 1
+# optimize := 1
 
 ifdef error
 CFLAGS		+=	-Wall \
@@ -86,11 +88,12 @@ COMPOSE		:=	docker compose
 # ============================================================================ #
 
 .PHONY: all
-all: $(NAME) copy
+all: $(NAME)
+# all: $(NAME) copy
 
-.PHONY: copy
-copy: ping_output
-	cp $(NAME) ping_output
+# .PHONY: copy
+# copy: ping_output
+# 	cp $(NAME) ping_output
 
 -include $(DEP)
 
@@ -121,11 +124,12 @@ re: fclean all
 # ---------------------------------- DOCKER ---------------------------------- #
 
 .PHONY: up
-up: ping_output graphics_permission
+up: all graphics_permission
+# up: ping_output graphics_permission
 	$(COMPOSE) up -d
 
-ping_output:
-	@mkdir -p ping_output
+# ping_output:
+# 	@mkdir -p ping_output
 
 .PHONY: graphics_permission
 graphics_permission:
@@ -139,6 +143,10 @@ down:
 clear: down
 	docker volume rm -f $(shell docker volume ls -q)
 	docker image rm -f $(shell docker image ls -aq)
+
+.PHONY: fclear
+fclear:
+	docker system prune -f
 
 .PHONY: dre
 dre: clear up
