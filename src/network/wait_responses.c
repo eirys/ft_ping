@@ -10,7 +10,14 @@
 #include "log.h"
 #include "stats.h"
 
+/* -------------------------------------------------------------------------- */
+
 #define BUF_SIZE    32768 /* Large to handle replies overflows */
+
+/* --------------------------------- STATIC --------------------------------- */
+
+static fd_set           _listen_fds;
+static struct timeval   _timeout;
 
 /* -------------------------------------------------------------------------- */
 
@@ -33,6 +40,10 @@ FT_RESULT _receive_packet(u8* buffer, Packet* packet) {
         log_error("received packet from unknown family");
         return FT_FAILURE;
     }
+
+    if (Gettimeofday(&packet->m_timestamp, NULL) == FT_FAILURE)
+        return FT_FAILURE;
+
     return FT_SUCCESS;
 }
 
@@ -65,6 +76,9 @@ FT_RESULT _filter_icmp(const u8* raw_packet, Packet* packet) {
     return FT_SUCCESS;
 }
 
+/**
+ * @brief Dump the content of the request.
+ */
 static
 void _dump_request(const Packet* packet) {
     log_info("IP header dump:");
@@ -139,6 +153,9 @@ void _process_reply(const Packet* packet) {
     printf("\n");
 }
 
+/**
+ * @brief Process an ICMP message, displaying the content if it's an echo reply, or the type of message.
+ */
 static
 void _process_message(const Packet* packet) {
     bool is_numeric = g_arguments.m_options.m_numeric;
@@ -172,6 +189,7 @@ void _process_message(const Packet* packet) {
         case ICMP_ADDRESSREPLY:     printf("Address mask reply"); break;
         default:                    printf("Unknown ICMP type: %d", packet->m_icmp_header->type); break;
     }
+    printf(" (code %d)\n", packet->m_icmp_header->code);
     printf("\n");
 
     if (g_arguments.m_options.m_verbose) {
@@ -189,28 +207,28 @@ void _process_message(const Packet* packet) {
 
 /* -------------------------------------------------------------------------- */
 
+/**
+ * @brief Set a timeout for response reception.
+ */
+void setup_listener() {
+    _timeout.tv_sec = g_arguments.m_options.m_linger;
+    _timeout.tv_usec = 0;
+
+    FD_ZERO(&_listen_fds);
+    FD_SET(g_socket.m_fd, &_listen_fds);
+}
+
 FT_RESULT wait_responses() {
     u8 message[BUF_SIZE];
 
-    struct timeval timeout;
-    timeout.tv_sec = g_arguments.m_options.m_timeout;
-    timeout.tv_usec = 0;
-
-    fd_set listen_fds;
-    FD_ZERO(&listen_fds);
-    FD_SET(g_socket.m_fd, &listen_fds);
-
     while (true) {
-        int fds = Select(g_socket.m_fd + 1, &listen_fds, NULL, NULL, &timeout);
+        int fds = Select(g_socket.m_fd + 1, &_listen_fds, NULL, NULL, &_timeout);
         if (fds == 0) break; /* Timeout */
         else if (fds == -1) return FT_FAILURE;
 
         Packet  packet;
 
         if (_receive_packet(message, &packet) == FT_FAILURE)
-            return FT_FAILURE;
-
-        if (Gettimeofday(&packet.m_timestamp, NULL) == FT_FAILURE)
             return FT_FAILURE;
 
         if (_filter_icmp(message, &packet) == FT_FAILURE)

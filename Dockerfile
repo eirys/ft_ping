@@ -1,6 +1,6 @@
 FROM debian:latest
 
-COPY ./ft_ping /home/ft_ping
+# COPY ./ft_ping /home/ft_ping
 
 RUN apt update -y \
 && apt install -yq \
@@ -14,6 +14,6 @@ inetutils-ping \
 wireshark \
 && apt clean -y
 
-WORKDIR /home
+WORKDIR /home/ping_output
 
 CMD ["tail", "-f", "/dev/null"]

@@ -22,10 +22,11 @@ typedef struct s_Pattern {
  */
 typedef struct s_Options {
     Pattern m_pattern;      /* -p --pattern : pattern to fill ICMP payload */
-    i32     m_timeout;      /* -w --timeout : time to wait for a response */
+    u32     m_timeout;      /* -w --timeout : time to wait for a response */
     u32     m_interval;     /* -i --interval : interval between each packet */
     u32     m_count;        /* -c --count: number of packets to send */
     u32     m_size;         /* -s --size : size of the ICMP payload */
+    u32     m_linger;       /* -W --linger : time to linger */
     u8      m_ttl;          /* --ttl : time to live */
     bool    m_numeric;      /* -n --numeric : display numeric addresses */
     bool    m_verbose;      /* -v --verbose */

@@ -53,6 +53,7 @@ FT_RESULT   send_request();
  */
 FT_RESULT   wait_responses();
 
+void        setup_listener();
 FT_RESULT   allocate_buffer();
 void        destroy_buffer();
 

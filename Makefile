@@ -88,12 +88,12 @@ COMPOSE		:=	docker compose
 # ============================================================================ #
 
 .PHONY: all
-all: $(NAME)
-# all: $(NAME) copy
+# all: $(NAME)
+all: $(NAME) copy
 
-# .PHONY: copy
-# copy: ping_output
-# 	cp $(NAME) ping_output
+.PHONY: copy
+copy: ping_output
+	cp $(NAME) ping_output
 
 -include $(DEP)
 
@@ -124,12 +124,12 @@ re: fclean all
 # ---------------------------------- DOCKER ---------------------------------- #
 
 .PHONY: up
-up: all graphics_permission
-# up: ping_output graphics_permission
+# up: all graphics_permission
+up: ping_output graphics_permission
 	$(COMPOSE) up -d
 
-# ping_output:
-# 	@mkdir -p ping_output
+ping_output:
+	@mkdir -p ping_output
 
 .PHONY: graphics_permission
 graphics_permission:

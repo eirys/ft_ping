@@ -2,14 +2,12 @@
 # define STATS_H
 
 #include "typedefs.h"
-#include <sys/time.h>
 
 /* -------------------------------------------------------------------------- */
 /*                                   STRUCTS                                  */
 /* -------------------------------------------------------------------------- */
 
 typedef struct s_PingStats {
-    struct timeval  m_start;
     double          m_min_rtt;
     double          m_max_rtt;
     double          m_total_rtt;
@@ -23,7 +21,6 @@ typedef struct s_PingStats {
 /* -------------------------------------------------------------------------- */
 
 extern PingStats    g_stats;
-extern bool         g_ongoing;
 
 /* -------------------------------------------------------------------------- */
 /*                                 PROTOTYPES                                 */

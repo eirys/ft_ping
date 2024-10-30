@@ -19,6 +19,8 @@ RawSocket  g_socket = {
 
 static struct addrinfo* _destination_info = NULL;
 
+/* -------------------------------------------------------------------------- */
+
 static
 struct addrinfo* _resolve_ip(const char* destination) {
     struct addrinfo* output;

@@ -10,36 +10,67 @@
 
 /* -------------------------------------------------------------------------- */
 
-static struct sigaction old_alarm;
-static struct sigaction old_sigint;
+static struct sigaction _old_alarm;
+static struct sigaction _old_sigint;
 
 /* -------------------------------------------------------------------------- */
 
-void reset_signals(void) {
-    if (Sigaction(SIGALRM, &old_alarm, NULL) == FT_FAILURE) {
+void _reset_signals(void) {
+    if (Sigaction(SIGALRM, &_old_alarm, NULL) == FT_FAILURE) {
         log_error("failed to reset alarm");
     }
-    if (Sigaction(SIGINT, &old_sigint, NULL) == FT_FAILURE) {
+    if (Sigaction(SIGINT, &_old_sigint, NULL) == FT_FAILURE) {
         log_error("failed to reset sigint");
     }
 }
 
-void stop(__attribute__((unused)) int signal) {
-    reset_signals();
-    display_stats();
+static
+void _cleanup(void) {
+    _reset_signals();
     close_raw_socket();
     destroy_buffer();
+}
+
+/* -------------------------------------------------------------------------- */
+
+void stop(__attribute__((unused)) int signal) {
+    _cleanup();
+    display_stats();
     exit(EXIT_SUCCESS);
 }
 
-void ping(__attribute__((unused)) int signal) {
-    if (send_request() == FT_FAILURE) {
-        log_error("failed to send request");
-
-        reset_signals();
-        close_raw_socket();
-        destroy_buffer();
+static
+long int _elapsed(const struct timeval* start) {
+    struct timeval now;
+    if (Gettimeofday(&now, NULL) == FT_FAILURE) {
+        _cleanup();
         exit(EXIT_FAILURE);
+    }
+    long int seconds = now.tv_sec - start->tv_sec;
+    long int microseconds = now.tv_usec - start->tv_usec;
+    if (microseconds < 0) {
+        seconds -= 1; /* Result is 1 second */
+    }
+    return seconds;
+}
+
+void ping(__attribute__((unused)) int signal) {
+    static struct timeval start = {0, 0};
+
+    if (start.tv_sec == 0 && start.tv_usec == 0) {
+        if (Gettimeofday(&start, NULL) == FT_FAILURE) {
+            _cleanup();
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    if (send_request() == FT_FAILURE) {
+        _cleanup();
+        exit(EXIT_FAILURE);
+    }
+
+    if (_elapsed(&start) >= (long int)g_arguments.m_options.m_timeout) {
+        stop(22);
     }
 
     if (g_stats.m_packet_sent < g_arguments.m_options.m_count) {
@@ -48,12 +79,12 @@ void ping(__attribute__((unused)) int signal) {
 }
 
 FT_RESULT set_signals(void) {
-    if (Sigaction(SIGALRM, NULL, &old_alarm) == FT_FAILURE) {
+    if (Sigaction(SIGALRM, NULL, &_old_alarm) == FT_FAILURE) {
         log_error("failed to save old alarm");
         return FT_FAILURE;
     }
 
-    if (Sigaction(SIGINT, NULL, &old_sigint) == FT_FAILURE) {
+    if (Sigaction(SIGINT, NULL, &_old_sigint) == FT_FAILURE) {
         log_error("failed to save old sigint");
         return FT_FAILURE;
     }

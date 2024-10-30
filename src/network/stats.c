@@ -4,18 +4,11 @@
 #include <float.h>
 
 #include "options.h"
-#include "raw_socket.h"
 #include "log.h"
 
 /* --------------------------------- GLOBALS -------------------------------- */
 
-bool g_ongoing = true;
-
-/* -------------------------------------------------------------------------- */
-
 PingStats g_stats = {
-    .m_start.tv_sec = 0,
-    .m_start.tv_usec = 0,
     .m_min_rtt = DBL_MAX,
     .m_max_rtt = 0.0,
     .m_total_rtt = 0.0,

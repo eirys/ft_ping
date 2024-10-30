@@ -17,11 +17,18 @@ pid_t   g_pid;
 
 static
 void _show_help(const char* program_name) {
-    //TODO + readme
-
-    log_info("Usage:");
-    log_info("  %s [-SHORT_OPTION] <destination>", program_name);
-    log_info("  %s [--LONG_OPTION]", program_name);
+    log_info("Usage: %s [OPTION] <destination>", program_name);
+    log_info("Send ICMP ECHO_REQUEST packets to network hosts\n");
+    log_info("Options:");
+    log_info("  -p, --pattern <pattern>     Pattern to fill ICMP payload");
+    log_info("  -w, --timeout <timeout>     Time to wait for a response");
+    log_info("  -i, --interval <interval>   Interval between each packet");
+    log_info("  -c, --count <count>         Number of packets to send");
+    log_info("  -s, --size <size>           Size of the ICMP payload");
+    log_info("  --ttl <ttl>                 Time to live");
+    log_info("  -n, --numeric               Display numeric addresses");
+    log_info("  -v, --verbose               Verbose output");
+    log_info("  -?, --help                  Display this help and exit");
 }
 
 static
@@ -46,6 +53,7 @@ FT_RESULT _trigger(void) {
     if (allocate_buffer() == FT_FAILURE) {
         return FT_FAILURE;
     }
+    setup_listener();
 
     /* Send first ping */
     if (g_arguments.m_options.m_verbose)
@@ -67,10 +75,8 @@ FT_RESULT _trigger(void) {
         return FT_FAILURE;
     }
 
-//TODO display stats
+    stop(42);
 
-    close_raw_socket();
-    destroy_buffer();
     return FT_SUCCESS;
 }
 
@@ -88,9 +94,8 @@ int main(int arg_count, char* const* arg_value) {
 
     if (g_arguments.m_options.m_help) {
         _show_help(arg_value[0]);
-    } else {
-        if (_trigger() == FT_FAILURE)
-            EXIT_FAILURE;
+    } else if (_trigger() == FT_FAILURE) {
+        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;
