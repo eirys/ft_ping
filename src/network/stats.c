@@ -20,9 +20,8 @@ PingStats g_stats = {
 /* -------------------------------------------------------------------------- */
 
 void display_stats() {
-    log_info("--- %s statistics ---", g_arguments.m_destination);
-
-    log_info("%u packets transmitted, %u packets received, %u%% packets lost",
+    log_info("--- %s ping statistics ---", g_arguments.m_destination);
+    log_info("%u packets transmitted, %u packets received, %u%% packet loss",
         g_stats.m_packet_sent,
         g_stats.m_packet_received,
         (u32)((float)(g_stats.m_packet_sent - g_stats.m_packet_received) * 100.0f / (float)g_stats.m_packet_sent)

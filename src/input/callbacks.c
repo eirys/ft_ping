@@ -34,8 +34,12 @@ FT_RESULT uchar_check(char* value, void* pflag) {
     }
 
     const int result = atoi(value);
-    if (result < 0 || result > UINT8_MAX) {
-        log_error("bad value for ttl, must be in range [0, 255]");
+    if (result < 1) {
+        log_error("value too small: %d", result);
+        return FT_FAILURE;
+    }
+    else if (result > UINT8_MAX) {
+        log_error("value too big: %d", result);
         return FT_FAILURE;
     }
 
@@ -52,11 +56,11 @@ FT_RESULT hex_check(char* value, void* pflag) {
         value += 2;
     }
 
-    const u32 len = strlen(value);
-
     if (_check_str_kind(value, isxdigit) == FT_FAILURE) {
         return FT_FAILURE;
     }
+
+    const u32 len = strlen(value);
 
     if (len > 16) {
         log_error("failed to set pattern flag (value too long, only up to 16 bytes allowed)");

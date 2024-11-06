@@ -36,11 +36,6 @@ FT_RESULT _receive_packet(u8* buffer, Packet* packet) {
     packet->m_size = (u32)bytes_received;
     packet->m_src = *(struct sockaddr_in*)&raw_src;
 
-    if (packet->m_src.sin_family != AF_INET) {
-        log_error("received packet from unknown family");
-        return FT_FAILURE;
-    }
-
     if (Gettimeofday(&packet->m_timestamp, NULL) == FT_FAILURE)
         return FT_FAILURE;
 
@@ -51,19 +46,24 @@ FT_RESULT _receive_packet(u8* buffer, Packet* packet) {
  * @brief Filter properly formed ICMPv4 packets.
  */
 static
-FT_RESULT _filter_icmp(const u8* raw_packet, Packet* packet) {
+FT_RESULT _filter_icmpv4(const u8* raw_packet, Packet* packet) {
+    if (packet->m_src.sin_family != AF_INET) {
+        log_debug("_filter_icmpv4", "not ipv4");
+        return FT_FAILURE;
+    }
+
     const struct iphdr*   ip_header = (struct iphdr*)raw_packet;
 
     /* Not ICMPv4 */
     if (ip_header->protocol != IPPROTO_ICMP) {
-        log_debug("_filter_icmp", "not an ICMP message");
+        log_debug("_filter_icmpv4", "not an ICMP message");
         return FT_FAILURE;
     }
 
     /* Incomplete packet */
     const u32 ip_size = ip_header->ihl * sizeof(u32);
     if (packet->m_size - ip_size < ICMP_HEADER_SIZE) {
-        log_error("packet malformed");
+        log_debug("_filter_icmpv4", "packet malformed");
         return FT_FAILURE;
     }
 
@@ -189,8 +189,7 @@ void _process_message(const Packet* packet) {
         case ICMP_ADDRESSREPLY:     printf("Address mask reply"); break;
         default:                    printf("Unknown ICMP type: %d", packet->m_icmp_header->type); break;
     }
-    printf(" (code %d)\n", packet->m_icmp_header->code);
-    printf("\n");
+    printf(" (code: %d)\n", packet->m_icmp_header->code);
 
     if (g_arguments.m_options.m_verbose) {
         Packet packet;
@@ -210,34 +209,42 @@ void _process_message(const Packet* packet) {
 /**
  * @brief Set a timeout for response reception.
  */
-void setup_listener() {
+static
+void _reset_timeout() {
     _timeout.tv_sec = g_arguments.m_options.m_linger;
     _timeout.tv_usec = 0;
-
-    FD_ZERO(&_listen_fds);
-    FD_SET(g_socket.m_fd, &_listen_fds);
 }
 
 FT_RESULT wait_responses() {
     u8 message[BUF_SIZE];
 
+    FD_ZERO(&_listen_fds);
+    FD_SET(g_socket.m_fd, &_listen_fds);
+    _reset_timeout();
+
     while (true) {
         int fds = Select(g_socket.m_fd + 1, &_listen_fds, NULL, NULL, &_timeout);
-        if (fds == 0) break; /* Timeout */
-        else if (fds == -1) return FT_FAILURE;
+        if (fds == -1) {
+            return FT_FAILURE;
+        } else if (fds == 0) {
+            log_error("No response received");
+            return FT_FAILURE;
+        }
 
         Packet  packet;
 
         if (_receive_packet(message, &packet) == FT_FAILURE)
             return FT_FAILURE;
 
-        if (_filter_icmp(message, &packet) == FT_FAILURE)
+        if (_filter_icmpv4(message, &packet) == FT_FAILURE)
             continue;
 
         _process_message(&packet);
 
         if (g_stats.m_packet_sent == g_arguments.m_options.m_count)
             break;
+
+        _reset_timeout();
     }
 
     return FT_SUCCESS;

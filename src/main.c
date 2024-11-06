@@ -53,7 +53,6 @@ FT_RESULT _trigger(void) {
     if (allocate_buffer() == FT_FAILURE) {
         return FT_FAILURE;
     }
-    setup_listener();
 
     /* Send first ping */
     if (g_arguments.m_options.m_verbose)

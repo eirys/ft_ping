@@ -123,6 +123,7 @@ re: fclean all
 
 # ---------------------------------- DOCKER ---------------------------------- #
 
+#TODO
 .PHONY: up
 # up: all graphics_permission
 up: ping_output graphics_permission
@@ -135,6 +136,10 @@ ping_output:
 graphics_permission:
 	@xhost +local:docker
 
+.PHONY: run
+run: up
+	docker exec -ti debian42 bash
+
 .PHONY: down
 down:
 	$(COMPOSE) down
@@ -145,12 +150,8 @@ clear: down
 	docker image rm -f $(shell docker image ls -aq)
 
 .PHONY: fclear
-fclear:
+fclear: clear
 	docker system prune -f
 
 .PHONY: dre
 dre: clear up
-
-.PHONY: exec
-exec: up
-	docker exec -ti debian42 bash
