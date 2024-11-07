@@ -11,7 +11,7 @@
 
 static
 void _error(const char* function_name, const char* message) {
-    fprintf(stderr, "[Error: `%s'] %s\n", function_name, message);
+    fprintf(stderr, "`%s' %s\n", function_name, message);
 #ifdef __DEBUG
     fprintf(stderr, "(code %d: %s)\n", errno, strerror(errno));
 #endif
@@ -24,7 +24,7 @@ void _error(const char* function_name, const char* message) {
 void* Malloc(const u32 size) {
     void* data = malloc(size);
     if (data == NULL) {
-        _error("Malloc", "failed to allocate memory");
+        _error("malloc", "failed to allocate memory");
         return NULL;
     }
     return data;
@@ -32,7 +32,7 @@ void* Malloc(const u32 size) {
 
 FT_RESULT Free(void* data) {
     if (data == NULL) {
-        _error("Free", "data is NULL");
+        _error("free", "data is NULL");
         return FT_FAILURE;
     }
     free(data);
@@ -45,12 +45,12 @@ FT_RESULT Free(void* data) {
 
 char* Strdup(const char* data) {
     if (data == NULL) {
-        _error("Strdup", "data is NULL");
+        _error("strdup", "data is NULL");
         return NULL;
     }
     char* str = strdup(data);
     if (str == NULL) {
-        _error("Strdup", "failed to duplicate string");
+        _error("strdup", "failed to duplicate string");
         return NULL;
     }
     return str;
@@ -79,7 +79,7 @@ int Select(
 ) {
     int fds = select(nfds, readfds, writefds, exceptfds, timeout);
     if (fds == -1 && errno != EINTR) {
-        _error("Select", "failed to listen on file descriptor");
+        _error("select", "failed to listen on file descriptor");
     } else if (fds == -1 && errno == EINTR) {
         return INT32_MAX; /* Fictive value */
     }
@@ -89,13 +89,13 @@ int Select(
 int Socket(int domain, int type, int protocol) {
     int fd = socket(domain, type, protocol);
     if (fd == -1)
-        _error("Socket", "failed to create socket");
+        _error("socket", "failed to create socket");
     return fd;
 }
 
 FT_RESULT Close(int fd) {
     if (close(fd) == -1) {
-        _error("Close", "failed to close socket");
+        _error("close", "failed to close socket");
         return FT_FAILURE;
     }
     return FT_SUCCESS;
@@ -104,10 +104,10 @@ FT_RESULT Close(int fd) {
 FT_RESULT Sendto(int sockfd, const void* buf, u32 len, int flags, const struct sockaddr* dest_addr, socklen_t addrlen) {
     const ssize_t bytes = sendto(sockfd, buf, len, flags, dest_addr, addrlen);
     if (bytes == -1) {
-        _error("Send", "failed to send data");
+        _error("send", "failed to send data");
         return FT_FAILURE;
     } else if (bytes != len) {
-        _error("Send", "failed to send all data");
+        _error("send", "failed to send all data");
         return FT_FAILURE;
     }
     return FT_SUCCESS;
@@ -121,7 +121,7 @@ ssize_t Recvfrom(int sockfd, void* buf, u32 len, int flags, struct sockaddr* src
             if (errno == EINTR) {
                 continue;
             }
-            _error("Recv", "failed to receive data");
+            _error("recv", "failed to receive data");
             break;
         } else {
             break;
@@ -144,7 +144,7 @@ int Getaddrinfo(const char* node, const char* service, const struct addrinfo* hi
             break;
 
         default: /* System error */
-            _error("Getaddrinfo", gai_strerror(result));
+            _error("getaddrinfo", gai_strerror(result));
             break;
     }
     return FT_FAILURE;
@@ -163,7 +163,7 @@ FT_RESULT   Getnameinfo(const struct sockaddr* sa, socklen_t salen, char* host, 
 
 FT_RESULT Gettimeofday(struct timeval* tv, void* tz) {
     if (gettimeofday(tv, tz) == -1) {
-        _error("Gettimeofday", "failed to send data");
+        _error("gettimeofday", "failed to send data");
         return FT_FAILURE;
     }
     return FT_SUCCESS;
@@ -171,7 +171,7 @@ FT_RESULT Gettimeofday(struct timeval* tv, void* tz) {
 
 FT_RESULT Sigaction(int signum, const struct sigaction* new_act, struct sigaction* old_act) {
     if (sigaction(signum, new_act, old_act) == -1) {
-        _error("Sigaction", "failed to set sigaction");
+        _error("sigaction", "failed to set sigaction");
         return FT_FAILURE;
     }
     return FT_SUCCESS;

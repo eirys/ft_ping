@@ -41,6 +41,9 @@ FT_RESULT _check_privileges() {
     return FT_SUCCESS;
 }
 
+/**
+ * @brief Trigger the ping program.
+ */
 static
 FT_RESULT _trigger(void) {
     /* Setup */
@@ -79,6 +82,12 @@ FT_RESULT _trigger(void) {
     return FT_SUCCESS;
 }
 
+static
+void _cleanup(void) {
+    destroy_raw_socket();
+    destroy_buffer();
+}
+
 /* -------------------------------------------------------------------------- */
 
 int main(int arg_count, char* const* arg_value) {
@@ -94,6 +103,7 @@ int main(int arg_count, char* const* arg_value) {
     if (g_arguments.m_options.m_help) {
         _show_help(arg_value[0]);
     } else if (_trigger() == FT_FAILURE) {
+        _cleanup();
         return EXIT_FAILURE;
     }
 

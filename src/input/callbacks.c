@@ -78,7 +78,7 @@ FT_RESULT hex_check(char* value, void* pflag) {
     }
 
     Pattern* pattern = (Pattern*)pflag;
-    pattern->content = result;
+    pattern->pattern_content = result;
     pattern->length = (len + 1) / 2;
 
     return FT_SUCCESS;

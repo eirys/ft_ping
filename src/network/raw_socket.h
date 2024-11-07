@@ -32,6 +32,6 @@ FT_RESULT   create_raw_socket(const char* destination);
 /**
  * @brief Close the raw socket and free allocated data.
  */
-void        close_raw_socket(void);
+void        destroy_raw_socket(void);
 
 #endif /* SOCKET_H */

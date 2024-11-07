@@ -10,7 +10,7 @@
 /* --------------------------------- GLOBALS -------------------------------- */
 
 Arguments g_arguments = {
-    .m_options.m_pattern.content = 0xDEadBEef,
+    .m_options.m_pattern.pattern_content = 0xDEadBEef,
     .m_options.m_pattern.length = 4U,
     .m_options.m_timeout = UINT32_MAX,
     .m_options.m_interval = 1U,
@@ -225,7 +225,7 @@ FT_RESULT retrieve_arguments(const int arg_count, char* const* arg_values) {
         return FT_FAILURE;
     }
 
-    if (g_arguments.m_options.m_help == 1) {
+    if (g_arguments.m_options.m_help == true) {
         return FT_SUCCESS;
     }
 

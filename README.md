@@ -1,7 +1,8 @@
 # ft_ping
 
-A *simplified* re-implementation of the `ping` program in C.
+A *simplified* re-implementation of the inetutils `ping` program in C.
 
+Send ICMP ECHO_REQUEST packets to network hosts.
 
 ## Usage
 
@@ -16,9 +17,23 @@ where:
 
 - `--help` : display the usage command line and the list of options.
 
-- `-p` *tbd*
+- `-v` --*verbose* : enable verbose output.
 
-- `-v` -- *verbose* : enable verbose output.
+- `-n` --*numeric* : does not attempt symbolic name lookup for host.
+
+- `-p` --*pattern* : fill packet payload with pattern.
+
+- `-w` --*timeout* : time before the program stops.
+
+- `-i` --*interval* : time to wait before sending a new request.
+
+- `-c` --*count* : number of packets to send (and receive).
+
+- `-s` --*size* : size of payload for the ICMPv4 request.
+
+- `-W` --*linger* : time to wait for a response to an echo request.
+
+- `--ttl` : set time to live (TTL) for each packet.
 
 
 ## Resources

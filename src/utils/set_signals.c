@@ -27,16 +27,8 @@ void _reset_signals(void) {
 static
 void _cleanup(void) {
     _reset_signals();
-    close_raw_socket();
+    destroy_raw_socket();
     destroy_buffer();
-}
-
-/* -------------------------------------------------------------------------- */
-
-void stop(__attribute__((unused)) int signal) {
-    _cleanup();
-    display_stats();
-    exit(EXIT_SUCCESS);
 }
 
 static
@@ -54,6 +46,20 @@ long int _elapsed(const struct timeval* start) {
     return seconds;
 }
 
+/* -------------------------------------------------------------------------- */
+
+/**
+ * @brief Handler for SIGINT signal: stop the program gracefully.
+ */
+void stop(__attribute__((unused)) int signal) {
+    _cleanup();
+    display_stats();
+    exit(EXIT_SUCCESS);
+}
+
+/**
+ * @brief Handler for SIGALRM signal: send a ping.
+ */
 void ping(__attribute__((unused)) int signal) {
     static struct timeval start = {0, 0};
 
@@ -69,8 +75,10 @@ void ping(__attribute__((unused)) int signal) {
         exit(EXIT_FAILURE);
     }
 
+    g_stats.m_packet_sent += 1;
+
     if (_elapsed(&start) >= (long int)g_arguments.m_options.m_timeout) {
-        stop(22);
+        stop(21);
     }
 
     if (g_stats.m_packet_sent < g_arguments.m_options.m_count) {
@@ -78,6 +86,9 @@ void ping(__attribute__((unused)) int signal) {
     }
 }
 
+/**
+ * @brief Enable signals to handle alarm (ping) and interrupt.
+ */
 FT_RESULT set_signals(void) {
     if (Sigaction(SIGALRM, NULL, &_old_alarm) == FT_FAILURE) {
         log_error("failed to save old alarm");

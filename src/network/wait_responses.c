@@ -164,8 +164,9 @@ void _process_message(const Packet* packet) {
     inet_ntop(AF_INET, &packet->m_src.sin_addr, src_ip, INET_ADDRSTRLEN);
 
     char src_host[NI_MAXHOST];
-    if (Getnameinfo((struct sockaddr*)&packet->m_src, sizeof(struct sockaddr_in), src_host, NI_MAXHOST, NULL, 0, NI_NAMEREQD) == FT_FAILURE) {
-        is_numeric = true;
+    if (!is_numeric) {
+        if (Getnameinfo((struct sockaddr*)&packet->m_src, sizeof(struct sockaddr_in), src_host, NI_MAXHOST, NULL, 0, NI_NAMEREQD) == FT_FAILURE)
+            is_numeric = true;
     }
 
     if (!is_numeric && packet->m_icmp_header->type != ICMP_ECHOREPLY)
@@ -189,6 +190,7 @@ void _process_message(const Packet* packet) {
         case ICMP_ADDRESSREPLY:     printf("Address mask reply"); break;
         default:                    printf("Unknown ICMP type: %d", packet->m_icmp_header->type); break;
     }
+
     printf(" (code: %d)\n", packet->m_icmp_header->code);
 
     if (g_arguments.m_options.m_verbose) {

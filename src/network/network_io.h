@@ -53,7 +53,14 @@ FT_RESULT   send_request();
  */
 FT_RESULT   wait_responses();
 
+/**
+ * @brief Send buffer allocation.
+ */
 FT_RESULT   allocate_buffer();
+
+/**
+ * @brief Send buffer deallocation.
+ */
 void        destroy_buffer();
 
 #endif /* NETWORK_IO_H */

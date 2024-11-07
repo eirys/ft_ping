@@ -29,7 +29,7 @@ struct addrinfo* _resolve_ip(const char* destination) {
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;          /* Allow IPv4 */
     hints.ai_socktype = SOCK_RAW;       /* Raw socket */
-    hints.ai_protocol = IPPROTO_ICMP;   /* IMCPv4 */
+    hints.ai_protocol = IPPROTO_ICMP;   /* ICMPv4 */
 
     if (Getaddrinfo(destination, NULL, &hints, &output) == FT_FAILURE) {
         return NULL;
@@ -44,7 +44,7 @@ FT_RESULT _destroy_malformed_data(void) {
         freeaddrinfo(_destination_info);
     }
 
-    close_raw_socket();
+    destroy_raw_socket();
 
     return FT_FAILURE;
 }
@@ -79,7 +79,7 @@ FT_RESULT create_raw_socket(const char* destination) {
     }
 
     /* IP Header: Tell the kernel that we build and include our own IP header */
-    i32 option_value = 1;
+    const i32 option_value = 1;
     setsockopt(g_socket.m_fd, IPPROTO_IP, IP_HDRINCL, &option_value, sizeof(option_value));
 
     freeaddrinfo(_destination_info);
@@ -88,7 +88,7 @@ FT_RESULT create_raw_socket(const char* destination) {
     return FT_SUCCESS;
 }
 
-void close_raw_socket(void) {
+void destroy_raw_socket(void) {
     if (g_socket.m_fd != -1) {
         Close(g_socket.m_fd);
     }

@@ -70,7 +70,7 @@ void _set_icmp_header(struct icmphdr* icmp_header, u32 icmp_size) {
     icmp_header->type               = ICMP_ECHO;                /* ICMP Echo request */
     icmp_header->code               = 0U;                       /* No specific context */
     icmp_header->un.echo.id         = g_pid;                    /* Aid in matching echo requests/replies */
-    icmp_header->un.echo.sequence   = g_stats.m_packet_sent++;  /* Aid in matching echo requests/replies */
+    icmp_header->un.echo.sequence   = g_stats.m_packet_sent;    /* Aid in matching echo requests/replies */
     icmp_header->checksum           = 0;
 
     icmp_header->checksum           = _compute_checksum((u16*)icmp_header, icmp_size);
@@ -83,7 +83,7 @@ FT_RESULT _set_payload(u8* payload, const Pattern* pattern, u32 payload_size) {
     /* Set pattern */
     for (u32 i = 0; i < payload_size; i += value_length) {
         for (u32 j = 0; j < value_length; j++) {
-            payload[i + j] = pattern->raw[value_length - j - 1];
+            payload[i + j] = pattern->pattern_raw[value_length - j - 1];
         }
     }
 
@@ -101,6 +101,7 @@ FT_RESULT _set_payload(u8* payload, const Pattern* pattern, u32 payload_size) {
 void destroy_buffer() {
     if (g_send_buffer != NULL)
         Free(g_send_buffer);
+    g_send_buffer = NULL;
 }
 
 FT_RESULT allocate_buffer() {
