@@ -8,7 +8,6 @@ services:
     network_mode: host # Use host network
     volumes:
       - x11:/tmp/.X11-unix:ro             # Share X11 socket. Make sure to `xhost +local:docker` on host
-      - ping_output:/home/ping_output:ro
     environment:
       - DISPLAY=${DISPLAY} # Set DISPLAY environment variable
     cap_add: # Add capabilities (Wireshark)
@@ -21,10 +20,4 @@ volumes:
     driver_opts:
       type: none
       device: /tmp/.X11-unix
-      o: bind
-  ping_output:
-    driver: local
-    driver_opts:
-      type: none
-      device: ${PWD}/ping_output
       o: bind

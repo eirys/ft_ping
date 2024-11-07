@@ -9,11 +9,11 @@ NAME		:= ft_ping
 SRC_DIR		:=	src
 OBJ_DIR		:=	obj
 
+# ------------------------------ SUBDIRECTORIES ------------------------------ #
 UTILS_DIR	:=	utils
 INPUT_DIR	:=	input
 NETWORK_DIR	:=	network
 
-# ------------------------------ SUBDIRECTORIES ------------------------------ #
 SUBDIRS		:=	$(UTILS_DIR) \
 				$(INPUT_DIR) \
 				$(NETWORK_DIR)
@@ -82,18 +82,14 @@ LDFLAGS		:=	-lm
 RM			:=	rm -rf
 
 COMPOSE		:=	docker compose
+CONTAINER	:=	debian42
 
 # ============================================================================ #
 #                                     RULES                                    #
 # ============================================================================ #
 
 .PHONY: all
-# all: $(NAME)
-all: $(NAME) copy
-
-.PHONY: copy
-copy: ping_output
-	cp $(NAME) ping_output
+all: $(NAME)
 
 -include $(DEP)
 
@@ -123,14 +119,9 @@ re: fclean all
 
 # ---------------------------------- DOCKER ---------------------------------- #
 
-#TODO
 .PHONY: up
-# up: all graphics_permission
-up: ping_output graphics_permission
+up: all graphics_permission
 	$(COMPOSE) up -d
-
-ping_output:
-	@mkdir -p ping_output
 
 .PHONY: graphics_permission
 graphics_permission:
@@ -138,7 +129,7 @@ graphics_permission:
 
 .PHONY: run
 run: up
-	docker exec -ti debian42 bash
+	docker exec -ti $(CONTAINER) bash
 
 .PHONY: down
 down:
