@@ -73,6 +73,12 @@ FT_RESULT _filter_icmpv4(const u8* raw_packet, Packet* packet) {
     packet->m_icmp_header = (struct icmphdr*)(raw_packet + ip_size);
     packet->m_icmp_payload = (u8*)(raw_packet + ip_size + ICMP_HEADER_SIZE);
 
+    /* Not corresponding */
+    if (packet->m_icmp_header->un.echo.id != g_pid) {
+        log_debug("_filter_icmpv4", "packet received is not for us");
+        return FT_FAILURE;
+    }
+
     return FT_SUCCESS;
 }
 

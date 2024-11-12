@@ -14,4 +14,6 @@ inetutils-ping \
 wireshark \
 && apt clean -y
 
+WORKDIR /home
+
 CMD ["tail", "-f", "/dev/null"]
