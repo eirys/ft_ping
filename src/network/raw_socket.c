@@ -2,7 +2,6 @@
 
 #include <string.h> /* memset */
 #include <arpa/inet.h> /* inet_ntop */
-#include <fcntl.h> /* fcntl */
 
 #include "log.h"
 #include "wrapper.h"
